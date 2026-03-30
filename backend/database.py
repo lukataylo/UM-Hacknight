@@ -39,6 +39,7 @@ def init_db():
             contact_title TEXT,
             contact_email TEXT,
             contact_phone TEXT,
+            estimated_sqft INTEGER DEFAULT 0,
             submarket TEXT,
             hybrid_percentage INTEGER DEFAULT 0,
             signal_tags TEXT DEFAULT '[]',
@@ -152,7 +153,7 @@ def bulk_insert_jobs(records: list):
     conn.close()
 
 
-def get_companies(page=1, per_page=50, sort_by="score", sort_order="desc", min_score=0, industry=None, market=None, search=None):
+def get_companies(page=1, per_page=50, sort_by="score", sort_order="desc", min_score=0, industry=None, market=None, search=None, min_sqft=None, max_sqft=None):
     conn = get_db()
     query = "SELECT * FROM companies WHERE score >= ?"
     params = [min_score]
@@ -166,8 +167,14 @@ def get_companies(page=1, per_page=50, sort_by="score", sort_order="desc", min_s
     if search:
         query += " AND (LOWER(name) LIKE ? OR LOWER(domain) LIKE ? OR LOWER(description) LIKE ?)"
         params.extend([f"%{search.lower()}%"] * 3)
+    if min_sqft is not None:
+        query += " AND estimated_sqft >= ?"
+        params.append(min_sqft)
+    if max_sqft is not None:
+        query += " AND estimated_sqft <= ?"
+        params.append(max_sqft)
 
-    allowed_sorts = {"score", "name", "employee_count", "funding_total_usd", "job_count_90d"}
+    allowed_sorts = {"score", "name", "employee_count", "funding_total_usd", "job_count_90d", "estimated_sqft"}
     if sort_by not in allowed_sorts:
         sort_by = "score"
     order = "DESC" if sort_order == "desc" else "ASC"

@@ -347,6 +347,35 @@
   .pipeline-toast.show { display: flex; }
 
   .hidden { display: none !important; }
+
+  /* Bloomberg-style news ticker */
+  .ticker-wrap {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 45;
+    height: 32px; background: #0d0f12; border-bottom: 1px solid rgba(255,255,255,0.05);
+    overflow: hidden; display: flex; align-items: center;
+  }
+  .ticker-label {
+    flex-shrink: 0; padding: 0 16px; height: 100%; display: flex; align-items: center;
+    background: #10b981; color: #000; font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.15em; gap: 6px; z-index: 1;
+  }
+  .ticker-label svg { width: 12px; height: 12px; }
+  .ticker-track { flex: 1; overflow: hidden; position: relative; mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent); }
+  .ticker-content {
+    display: flex; align-items: center; gap: 0;
+    white-space: nowrap; animation: ticker-scroll 90s linear infinite;
+    font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  }
+  .ticker-content:hover { animation-play-state: paused; }
+  .ticker-item { display: flex; align-items: center; gap: 8px; padding: 0 24px; color: rgba(255,255,255,0.6); }
+  .ticker-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .ticker-dot.green { background: #10b981; }
+  .ticker-dot.amber { background: #f59e0b; }
+  .ticker-dot.red { background: #f43f5e; }
+  .ticker-dot.blue { background: #3b82f6; }
+  .ticker-company { color: #fff; font-weight: 700; }
+  .ticker-sep { color: rgba(255,255,255,0.1); font-size: 14px; }
+  @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 </style>
 </head>
 <body>
@@ -380,8 +409,19 @@
   </div>
 </nav>
 
+<!-- BLOOMBERG-STYLE NEWS TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-label">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    LIVE
+  </div>
+  <div class="ticker-track">
+    <div class="ticker-content" id="tickerContent"></div>
+  </div>
+</div>
+
 <!-- MAIN -->
-<main>
+<main style="padding-top:120px">
   <header class="header">
     <div class="header-top">
       <div>
@@ -423,6 +463,14 @@
       </select>
       <select class="filter-select" id="industryFilter" onchange="loadCompanies()">
         <option value="">All Industries</option>
+      </select>
+      <select class="filter-select" id="sqftFilter" onchange="loadCompanies()">
+        <option value="">All Sizes (SF)</option>
+        <option value="0-3000">Under 3,000 SF</option>
+        <option value="3000-8000">3,000 - 8,000 SF</option>
+        <option value="8000-15000">8,000 - 15,000 SF</option>
+        <option value="15000-30000">15,000 - 30,000 SF</option>
+        <option value="30000-999999">30,000+ SF</option>
       </select>
       <button class="pipeline-btn" onclick="runPipeline()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -472,6 +520,8 @@ let allCompanies = [];
 let expandedCards = {};
 let expandedRow = null;
 let searchTimeout = null;
+let totalPages = 1;
+let totalCompanies = 0;
 
 // SVG icon helpers
 const icons = {
@@ -494,6 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('currentDate').textContent = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   loadStats();
   loadCompanies();
+  loadTicker();
 });
 
 function switchView(view) {
@@ -538,14 +589,20 @@ function populateFilters(stats) {
 
 async function loadCompanies() {
   const params = new URLSearchParams({
-    page: currentPage, per_page: 100, sort_by: 'score', sort_order: 'desc', min_score: 0
+    page: currentPage, per_page: 50, sort_by: 'score', sort_order: 'desc', min_score: 0
   });
   const search = document.getElementById('searchInput').value;
   const city = document.getElementById('cityFilter').value;
   const industry = document.getElementById('industryFilter').value;
+  const sqft = document.getElementById('sqftFilter').value;
   if (search) params.set('search', search);
   if (city) params.set('market', city);
   if (industry) params.set('industry', industry);
+  if (sqft) {
+    const [min, max] = sqft.split('-');
+    params.set('min_sqft', min);
+    params.set('max_sqft', max);
+  }
 
   document.getElementById('content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
@@ -572,6 +629,8 @@ async function loadCompanies() {
     }
 
     allCompanies = data.companies;
+    totalPages = data.pages || 1;
+    totalCompanies = data.total || data.companies.length;
     renderView();
   } catch(e) {
     document.getElementById('content').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
@@ -703,7 +762,7 @@ function renderTable() {
   content.innerHTML = `<div class="table-container"><div class="table-scroll"><table>
     <thead><tr>
       <th>Company</th><th>Score</th><th>Location</th><th>Industry</th>
-      <th>Hiring</th><th>Hybrid %</th><th>Funding</th><th>Contact</th>
+      <th>Hiring</th><th>Hybrid %</th><th>Est. SF</th><th>Funding</th><th>Contact</th><th>Email</th>
     </tr></thead>
     <tbody>${allCompanies.map(c => {
       const tags = c.signal_tags || [];
@@ -734,6 +793,10 @@ function renderTable() {
           <div class="hybrid-text">${c.hybrid_percentage || 0}% Hybrid</div>
         </td>
         <td>
+          <span class="font-mono" style="font-size:14px;font-weight:700">${c.estimated_sqft ? c.estimated_sqft.toLocaleString() : '-'}</span>
+          ${c.estimated_sqft ? '<div style="font-size:10px;color:rgba(255,255,255,0.3)">sq ft</div>' : ''}
+        </td>
+        <td>
           <div class="td-funding-amount">${formatMoney(c.latest_funding_amount || c.funding_total_usd)}</div>
           <div class="td-funding-round">${esc(c.latest_funding_round || '')}</div>
         </td>
@@ -741,8 +804,11 @@ function renderTable() {
           <div class="td-contact-name">${esc(c.contact_name || '')}</div>
           <div class="td-contact-title">${esc(c.contact_title || '')}</div>
         </td>
+        <td>
+          ${c.contact_email ? `<a href="mailto:${esc(c.contact_email)}" style="color:#34d399;text-decoration:none;font-size:13px" onclick="event.stopPropagation()">${esc(c.contact_email)}</a>` : '<span style="color:rgba(255,255,255,0.3);font-size:12px">Not available</span>'}
+        </td>
       </tr>
-      ${isExpanded ? `<tr><td colspan="8" style="padding:0;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.4)">
+      ${isExpanded ? `<tr><td colspan="10" style="padding:0;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.4)">
         <div class="expanded-content">
           <div>
             <div class="micro-label">AI Intelligence Report</div>
@@ -791,13 +857,22 @@ function renderTable() {
     }).join('')}</tbody>
   </table></div>
   <div class="table-footer">
-    <div class="table-footer-text">Showing ${allCompanies.length} prospects</div>
+    <div class="table-footer-text">Showing ${allCompanies.length} of ${totalCompanies} prospects &middot; Page ${currentPage} of ${totalPages}</div>
     <div class="table-footer-btns">
-      <button class="page-btn" disabled>Prev</button>
-      <button class="page-btn active">1</button>
-      <button class="page-btn" disabled>Next</button>
+      <button class="page-btn" onclick="event.stopPropagation();goPage(currentPage-1)" ${currentPage<=1?'disabled':''}>Prev</button>
+      ${Array.from({length: totalPages}, (_, i) => i+1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1).map(p =>
+        `<button class="page-btn ${p===currentPage?'active':''}" onclick="event.stopPropagation();goPage(${p})">${p}</button>`
+      ).join('')}
+      <button class="page-btn" onclick="event.stopPropagation();goPage(currentPage+1)" ${currentPage>=totalPages?'disabled':''}>Next</button>
     </div>
   </div></div>`;
+}
+
+function goPage(p) {
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  loadCompanies();
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 function clearFilters() {
@@ -805,6 +880,8 @@ function clearFilters() {
   document.getElementById('cityFilter').value = '';
   document.getElementById('signalFilter').value = '';
   document.getElementById('industryFilter').value = '';
+  document.getElementById('sqftFilter').value = '';
+  currentPage = 1;
   loadCompanies();
 }
 
@@ -838,6 +915,25 @@ async function pollPipeline() {
 }
 
 function exportCSV() { window.open(`${API}/api/export?min_score=0`, '_blank'); }
+
+async function loadTicker() {
+  try {
+    const res = await fetch(`${API}/api/companies?per_page=30&sort_by=score&sort_order=desc&min_score=40`);
+    const data = await res.json();
+    const items = [];
+    data.companies.forEach(c => {
+      let evidence = c.evidence;
+      if (typeof evidence === 'string') try { evidence = JSON.parse(evidence); } catch(e) { evidence = []; }
+      if (!evidence || !evidence.length) return;
+      const ev = evidence[evidence.length - 1];
+      const dotClass = c.score >= 80 ? 'green' : c.score >= 60 ? 'amber' : c.score >= 40 ? 'blue' : 'red';
+      items.push(`<span class="ticker-item"><span class="ticker-dot ${dotClass}"></span><span class="ticker-company">${esc(c.name)}</span>${esc(ev.description)}</span><span class="ticker-sep">|</span>`);
+    });
+    // Duplicate for seamless loop
+    const html = items.join('') + items.join('');
+    document.getElementById('tickerContent').innerHTML = html;
+  } catch(e) { console.error('Ticker error:', e); }
+}
 </script>
 </body>
 </html>

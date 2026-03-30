@@ -1080,6 +1080,214 @@ EXTRA_COMPANIES = [
 
 DEMO_COMPANIES.extend(EXTRA_COMPANIES)
 
+# Add estimated_sqft to all hand-crafted companies based on their descriptions
+SQFT_MAP = {
+    "Stripe": 40000, "Scale AI": 10000, "Databricks": 30000, "Ramp": 8000,
+    "Wiz": 15000, "CoreWeave": 20000, "Revolut": 50000, "Monzo": 25000,
+    "Darktrace": 35000, "Wayve": 20000, "Tractable": 8000, "Klarna": 30000,
+    "Mistral AI": 12000, "N26": 5000, "Deliveroo": 25000, "Thought Machine": 15000,
+    "Figma": 8000, "Rippling": 10000, "Anthropic": 15000, "Notion": 5000,
+    "Vercel": 4000, "Retool": 3000, "Checkout.com": 20000, "GoCardless": 12000,
+    "Improbable": 10000, "Cazoo": 0, "Zopa": 10000, "Paddle": 6000,
+    "BioNTech": 10000, "Personio": 12000, "Celonis": 12000, "Bolt": 8000,
+    "SumUp": 20000, "Wise": 15000, "OakNorth": 8000, "Beamery": 5000,
+    "xAI": 15000, "Pleo": 8000,
+}
+for c in DEMO_COMPANIES:
+    c["estimated_sqft"] = SQFT_MAP.get(c["name"], random.choice([5000, 8000, 10000, 12000, 15000]))
+
+# === PROGRAMMATIC GENERATION of ~170 more companies ===
+GEN_COMPANIES_DATA = [
+    # (name, domain, industry, submarket, employees, funding_m, round, hybrid%, sqft, summary_template, signal)
+    ("Canva", "canva.com", "Design Software", "Shoreditch", 4000, 570, "Series F", 60, 12000, "Design platform opening London creative hub", "New London Office"),
+    ("Airtable", "airtable.com", "Productivity Software", "Clerkenwell", 1200, 1360, "Series F", 65, 8000, "No-code platform establishing London sales team", "New London Office"),
+    ("Plaid", "plaid.com", "FinTech", "City of London", 1000, 740, "Series D", 70, 10000, "Open banking infra opening London for UK/EU expansion", "New London Office"),
+    ("Brex", "brex.com", "FinTech", "Mayfair", 1100, 1200, "Series D", 75, 8000, "Corporate cards entering UK market from London base", "UK Launch"),
+    ("Snyk", "snyk.io", "Cybersecurity", "Holborn", 1200, 850, "Series G", 70, 15000, "DevSecOps leader expanding London engineering hub", "London Expansion"),
+    ("Typeform", "typeform.com", "SaaS", "Southwark", 600, 187, "Series C", 55, 6000, "Barcelona form builder growing London product team", "Moderate Growth"),
+    ("ContentSquare", "contentsquare.com", "Analytics", "Fitzrovia", 1800, 1400, "Series F", 65, 12000, "Paris digital analytics firm expanding London office", "London Expansion"),
+    ("Algolia", "algolia.com", "Search Technology", "Soho", 800, 334, "Series D", 60, 6000, "Paris search API company growing London sales", "Moderate Growth"),
+    ("UiPath", "uipath.com", "Automation / RPA", "Moorgate", 4100, 2100, "Public", 60, 20000, "RPA giant expanding London after Bucharest success", "HQ Expansion"),
+    ("Adyen", "adyen.com", "Payments", "Shoreditch", 4200, 266, "Public", 70, 18000, "Dutch payments giant doubling London engineering", "London Expansion"),
+    ("Mambu", "mambu.com", "Banking Technology", "Old Street", 700, 270, "Series E", 65, 8000, "Berlin cloud banking platform growing UK team", "Series E Funded"),
+    ("Trade Republic", "traderepublic.com", "FinTech", "Canary Wharf", 800, 900, "Series C", 70, 6000, "German neobroker entering UK market via London", "UK Launch"),
+    ("Gorillas", "gorillas.io", "Quick Commerce", "Bermondsey", 300, 1300, "Series C", 45, 4000, "Berlin rapid delivery restructuring London operations", "Restructuring"),
+    ("Multiverse", "multiverse.io", "EdTech", "King's Cross", 900, 414, "Series D", 75, 10000, "London apprenticeship platform scaling rapidly", "Hiring Surge"),
+    ("Cleo", "meetcleo.com", "FinTech", "Shoreditch", 300, 310, "Series C", 70, 5000, "AI financial assistant doubling London team", "Series C Funded"),
+    ("Starling Bank", "starlingbank.com", "Banking", "Finsbury Square", 3800, 950, "Series D", 65, 30000, "Digital bank expanding HQ as business banking surges", "HQ Expansion"),
+    ("Atom Bank", "atombank.co.uk", "Banking", "City of London", 500, 370, "Series C", 50, 5000, "Durham digital bank opening London advisory office", "New London Office"),
+    ("OVO Energy", "ovoenergy.com", "Energy / CleanTech", "Southwark", 4000, 600, "Series C", 55, 20000, "Green energy supplier growing London tech team", "Moderate Growth"),
+    ("Graphcore", "graphcore.ai", "AI Hardware", "King's Cross", 600, 710, "Series E", 80, 8000, "Bristol AI chip maker expanding London sales office", "London Expansion"),
+    ("Benevolent AI", "benevolent.ai", "Biotech / AI", "King's Cross", 350, 292, "Public", 75, 6000, "AI drug discovery company growing London R&D", "Lab Space"),
+    ("Lendable", "lendable.co.uk", "FinTech / Lending", "Moorgate", 200, 50, "Series B", 70, 4000, "London consumer lender expanding post-profitability", "Profitable"),
+    ("TrueLayer", "truelayer.com", "Open Banking", "Farringdon", 500, 272, "Series E", 65, 8000, "Open banking API leader expanding London HQ", "Series E Funded"),
+    ("Zilch", "zilch.com", "BNPL / FinTech", "Liverpool Street", 400, 500, "Series C", 60, 6000, "London BNPL app growing as ad revenue model takes off", "Revenue Growth"),
+    ("Faculty", "faculty.ai", "AI Consulting", "Victoria", 400, 60, "Series B", 70, 5000, "UK AI consultancy winning government contracts", "Government Contracts"),
+    ("Onfido", "onfido.com", "Identity Verification", "Old Street", 600, 200, "Series E", 65, 8000, "London ID verification scaling enterprise clients", "Series E Funded"),
+    ("Tessian", "tessian.com", "Cybersecurity", "Moorgate", 300, 120, "Series C", 70, 4000, "Email security startup growing post-Proofpoint acquisition talks", "Acquisition Target"),
+    ("Eigen Technologies", "eigentech.com", "AI / LegalTech", "Spitalfields", 200, 80, "Series B", 75, 3000, "Document AI company growing London engineering team", "Series B Funded"),
+    ("Featurespace", "featurespace.com", "AI / Fraud Detection", "King's Cross", 500, 108, "Series C", 70, 6000, "Cambridge fraud AI opening larger London office", "London Expansion"),
+    ("Unmind", "unmind.com", "Mental Health Tech", "Holborn", 250, 70, "Series B", 60, 3000, "Workplace mental health platform growing B2B sales", "Series B Funded"),
+    ("what3words", "what3words.com", "GeoTech", "Westbourne Grove", 200, 130, "Series C", 55, 3000, "Location tech company with steady London growth", "Moderate Growth"),
+    ("Aire", "aire.io", "FinTech / Credit", "Shoreditch", 100, 20, "Series A", 65, 2000, "Credit scoring startup expanding London team", "Series A Funded"),
+    ("Thought Machine (2)", "form3.tech", "Banking Infrastructure", "Aldgate", 400, 233, "Series C", 65, 6000, "Cloud payments platform scaling London engineering", "Series C Funded"),
+    ("Funding Circle", "fundingcircle.com", "FinTech / Lending", "Southwark", 1100, 750, "Public", 55, 12000, "SME lender consolidating London offices", "Office Consolidation"),
+    ("Habito", "habito.com", "PropTech / Mortgage", "Farringdon", 250, 57, "Series C", 60, 3000, "Digital mortgage broker growing London ops", "Moderate Growth"),
+    ("Paddle (2)", "paysend.com", "FinTech / Remittance", "City of London", 350, 125, "Series B", 55, 4000, "Global money transfer app growing London compliance", "Series B Funded"),
+    ("Quantexa", "quantexa.com", "AI / Data Analytics", "Paddington", 800, 350, "Series E", 70, 10000, "Decision intelligence platform doubling London HQ", "HQ Expansion"),
+    ("Privitar", "privitar.com", "Data Privacy", "Clerkenwell", 200, 108, "Series C", 65, 3000, "Data privacy platform growing London engineering", "Series C Funded"),
+    ("CloudPay", "cloudpay.net", "Payroll / HR", "Hammersmith", 600, 50, "Private", 55, 6000, "Global payroll platform expanding West London office", "Moderate Growth"),
+    ("Bink", "bink.com", "FinTech / Loyalty", "Victoria", 150, 40, "Series B", 60, 2000, "Payment-linked loyalty startup growing in London", "Series B Funded"),
+    ("Receipt Bank", "dext.com", "Accounting Tech", "Holborn", 500, 95, "Series C", 60, 6000, "Bookkeeping automation growing London product team", "Moderate Growth"),
+    ("Hybr", "hybr.co.uk", "PropTech / Renting", "Shoreditch", 80, 8, "Seed", 50, 1500, "Rental platform for young professionals scaling team", "Seed Funded"),
+    ("Nested", "nested.com", "PropTech", "Hammersmith", 120, 30, "Series B", 55, 2000, "Online estate agent growing London operations", "Series B Funded"),
+    ("OpenCosmos", "open-cosmos.com", "Space Tech", "Harwell / Didcot", 200, 75, "Series B", 70, 4000, "Satellite platform opening London commercial office", "New London Office"),
+    ("Vortexa", "vortexa.com", "Energy Analytics", "City of London", 250, 60, "Series B", 65, 4000, "Cargo analytics growing London trading floor team", "Series B Funded"),
+    ("YuLife", "yulife.com", "InsurTech", "Shoreditch", 200, 120, "Series C", 65, 3000, "Employee benefits insurtech growing post-Series C", "Series C Funded"),
+    ("Allica Bank", "allica.bank", "Banking", "Brentwood / City", 400, 250, "Series C", 65, 5000, "SME bank opening City of London advisory centre", "New London Office"),
+    ("Alan", "alan.com", "HealthTech / Insurance", "Fitzrovia", 700, 500, "Series E", 60, 6000, "French health insurer entering UK market via London", "UK Launch"),
+    ("Back Market", "backmarket.co.uk", "Recommerce", "Shoreditch", 700, 700, "Series E", 55, 5000, "Refurbished electronics marketplace growing UK team", "UK Expansion"),
+    ("Doctolib", "doctolib.co.uk", "HealthTech", "King's Cross", 2800, 600, "Series G", 65, 8000, "French telehealth platform exploring UK market entry", "UK Launch"),
+    ("Mirakl", "mirakl.com", "E-commerce Platform", "Clerkenwell", 800, 850, "Series E", 60, 6000, "Paris marketplace platform expanding London sales", "London Expansion"),
+    ("Pigment", "pigment.com", "Business Planning", "Soho", 400, 393, "Series D", 65, 5000, "Paris planning software opening London enterprise hub", "New London Office"),
+    ("Pennylane", "pennylane.com", "Accounting Tech", "Shoreditch", 500, 150, "Series C", 60, 4000, "French accounting platform piloting UK launch", "UK Launch"),
+    ("Qonto", "qonto.com", "FinTech / Banking", "Liverpool Street", 1400, 622, "Series D", 65, 8000, "Paris business banking entering UK market", "UK Launch"),
+    ("Spendesk", "spendesk.com", "Expense Management", "Farringdon", 500, 260, "Series C", 60, 5000, "Paris expense platform competing with Pleo in London", "London Expansion"),
+    ("Swile", "swile.co", "HR / Benefits", "Shoreditch", 700, 315, "Series C", 55, 4000, "French employee benefits app launching UK operations", "UK Launch"),
+    ("Lydia", "lydia-app.com", "FinTech / Payments", "Soho", 400, 250, "Series C", 55, 3000, "French P2P payments app exploring London launch", "UK Launch"),
+    ("Exotrail", "exotrail.com", "Space Tech", "Harwell / City", 150, 60, "Series B", 70, 3000, "French space propulsion startup opening UK sales office", "New London Office"),
+    ("Labster", "labster.com", "EdTech / VR", "Paddington", 400, 100, "Series C", 55, 4000, "Copenhagen VR lab simulation company growing London team", "Moderate Growth"),
+    ("MessageBird", "bird.com", "Communications", "Shoreditch", 1000, 1100, "Series D", 60, 8000, "Amsterdam comms platform growing London engineering", "London Expansion"),
+    ("Mollie", "mollie.com", "Payments", "City of London", 800, 800, "Series C", 65, 8000, "Dutch payments processor opening UK commercial hub", "UK Launch"),
+    ("Bitpanda", "bitpanda.com", "Crypto / FinTech", "Canary Wharf", 700, 500, "Series C", 60, 5000, "Vienna crypto exchange expanding London trading desk", "London Expansion"),
+    ("Taxfix", "taxfix.de", "FinTech / Tax", "Shoreditch", 500, 200, "Series C", 55, 4000, "Berlin tax app piloting UK launch for self-assessment", "UK Launch"),
+    ("Soldo", "soldo.com", "FinTech / Expense", "Marylebone", 350, 180, "Series C", 65, 5000, "Italian-London expense platform growing HQ team", "HQ Growth"),
+    ("Builder.ai", "builder.ai", "No-Code / AI", "Old Street", 800, 295, "Series D", 70, 8000, "AI app builder scaling London engineering office", "Series D Funded"),
+    ("Peak AI", "peak.ai", "AI / Analytics", "Manchester / London", 300, 120, "Series C", 60, 4000, "Manchester AI company opening London sales office", "New London Office"),
+    ("PolyAI", "poly.ai", "Conversational AI", "Fitzrovia", 200, 70, "Series B", 75, 3000, "Cambridge voice AI startup scaling London office", "Series B Funded"),
+    ("Stability AI", "stability.ai", "Generative AI", "Covent Garden", 200, 260, "Series B", 65, 4000, "Stable Diffusion maker rebuilding London team", "Restructuring"),
+    ("Hoxton Farms", "hoxtonfarms.com", "FoodTech / Biotech", "Hoxton", 80, 30, "Series A", 85, 5000, "Cultivated fat startup expanding London lab facility", "Lab Space"),
+    ("Synthesia", "synthesia.io", "AI Video", "King's Cross", 300, 157, "Series C", 70, 5000, "AI avatar video startup tripling London team", "Series C Funded"),
+    ("ElevenLabs", "elevenlabs.io", "AI Audio", "Soho", 150, 180, "Series B", 65, 3000, "Voice AI company opening London research lab", "New London Office"),
+    ("Helsing", "helsing.ai", "Defence AI", "Whitehall / Victoria", 400, 620, "Series C", 80, 8000, "Munich defence AI firm opening London for MOD contracts", "Government Contracts"),
+    ("Blackbird AI", "blackbird.ai", "AI / Disinformation", "City of London", 150, 32, "Series B", 65, 2000, "Narrative intelligence platform opening London office", "New London Office"),
+    ("Motorway", "motorway.co.uk", "Automotive / Marketplace", "Hammersmith", 400, 190, "Series C", 60, 5000, "Online car marketplace growing London HQ", "Series C Funded"),
+    ("Zepz", "zepz.io", "Remittance", "Shoreditch", 1600, 800, "Series E", 55, 12000, "WorldRemit parent optimising London office footprint", "Office Consolidation"),
+    ("Moneybox", "moneyboxapp.com", "FinTech / Investing", "Clerkenwell", 250, 85, "Series C", 65, 4000, "Savings app growing London product team", "Series C Funded"),
+    ("InstaDeep", "instadeep.com", "AI / Biotech", "King's Cross", 350, 100, "Acquired", 70, 5000, "BioNTech-acquired AI lab expanding London research", "Research Expansion"),
+    ("WorldFirst", "worldfirst.com", "FinTech / FX", "City of London", 700, 0, "Acquired", 60, 8000, "Ant Group-owned FX platform growing London operations", "Moderate Growth"),
+    ("Cookpad", "cookpad.com", "FoodTech", "Bermondsey", 200, 100, "Series F", 50, 3000, "Japanese recipe platform maintaining London tech hub", "Moderate Growth"),
+    ("Farfetch", "farfetch.com", "Luxury E-commerce", "Old Street", 3000, 1700, "Acquired", 55, 20000, "Coupang-owned luxury marketplace restructuring London", "Restructuring"),
+    ("THG", "thg.com", "E-commerce / Tech", "Manchester / London", 5000, 1000, "Public", 50, 8000, "Manchester tech conglomerate exploring London presence", "New London Office"),
+    ("Molo Finance", "molofinance.com", "PropTech / Mortgage", "Farringdon", 120, 35, "Series B", 65, 2000, "Digital mortgage lender growing London team", "Series B Funded"),
+    ("Seldon", "seldon.io", "MLOps", "Clerkenwell", 150, 33, "Series B", 70, 2500, "ML deployment platform growing London engineering", "Series B Funded"),
+    ("Wayflyer", "wayflyer.com", "FinTech / Revenue Finance", "London Bridge", 250, 276, "Series B", 60, 4000, "Dublin revenue financing opening London for UK SMEs", "New London Office"),
+    ("Griffin", "griffin.com", "Banking Infrastructure", "Old Street", 150, 48, "Series A", 75, 3000, "Banking-as-a-service startup scaling London team", "Series A Funded"),
+    ("ClearBank", "clear.bank", "Banking Infrastructure", "City of London", 600, 230, "Series C", 65, 8000, "UK clearing bank expanding City office", "HQ Expansion"),
+    ("Ledger", "ledger.com", "Crypto / Hardware", "Soho", 700, 580, "Series C", 55, 5000, "Paris crypto hardware firm growing London presence", "London Expansion"),
+    ("Scaleway", "scaleway.com", "Cloud Computing", "Old Street", 600, 500, "Private", 60, 5000, "French cloud provider entering UK enterprise market", "UK Launch"),
+    ("Photoroom", "photoroom.com", "AI / Photo Editing", "Soho", 200, 66, "Series B", 60, 3000, "Paris AI photo tool opening London creative team", "New London Office"),
+    ("Livekit", "livekit.io", "WebRTC / Developer Tools", "Shoreditch", 80, 43, "Series B", 55, 2000, "Open-source video infra opening London office", "New London Office"),
+    ("Speechmatics", "speechmatics.com", "AI / Speech", "Cambridge / King's Cross", 200, 62, "Series B", 75, 4000, "Cambridge speech AI growing London commercial team", "London Expansion"),
+    ("Zappi", "zappi.io", "Market Research / AI", "Clerkenwell", 250, 70, "Series C", 60, 4000, "AI market research platform growing London HQ", "Series C Funded"),
+    ("Copper", "copper.co", "Crypto Infrastructure", "City of London", 200, 100, "Series C", 70, 3000, "Crypto custody firm growing London compliance team", "Series C Funded"),
+    ("Duffel", "duffel.com", "Travel API", "Shoreditch", 100, 42, "Series B", 65, 2000, "Travel data API scaling London engineering", "Series B Funded"),
+    ("Sylvera", "sylvera.com", "Climate / Carbon", "Fitzrovia", 150, 80, "Series B", 65, 3000, "Carbon credit rating platform growing London team", "Series B Funded"),
+    ("Causaly", "causaly.com", "AI / Biomedical", "King's Cross", 120, 60, "Series B", 75, 2500, "Biomedical AI platform growing London research team", "Series B Funded"),
+    ("Ecologi", "ecologi.com", "Climate Tech", "Bristol / London", 80, 15, "Series A", 50, 1500, "Climate action platform opening London sales office", "New London Office"),
+    ("Cuvama", "cuvama.com", "Sales Tech", "Shoreditch", 60, 10, "Series A", 60, 1500, "Value selling platform growing London team", "Series A Funded"),
+    ("Thought Machine (4)", "dojo.tech", "FinTech / Payments", "Old Street", 800, 500, "Series C", 60, 8000, "Card payments platform growing London engineering", "Series C Funded"),
+    ("Ripple Energy", "rippleenergy.com", "CleanTech", "Southwark", 80, 20, "Series A", 55, 1500, "Community energy platform scaling London ops", "Series A Funded"),
+    ("Flux", "tryflux.com", "FinTech / Receipts", "Shoreditch", 60, 15, "Series A", 65, 1500, "Digital receipt startup growing London team", "Series A Funded"),
+    ("Liminal", "liminal.ai", "Computer Vision", "Paddington", 80, 20, "Series A", 70, 2000, "Identity verification AI growing London engineering", "Series A Funded"),
+    ("Tymit", "tymit.com", "FinTech / Credit", "Moorgate", 90, 25, "Series A", 60, 1500, "Buy now pay later credit card growing London ops", "Series A Funded"),
+    ("MANUAL", "manual.co", "HealthTech", "Shoreditch", 100, 30, "Series B", 55, 2000, "Men's health platform growing London product team", "Series B Funded"),
+    ("Skin + Me", "skinandme.com", "HealthTech", "Clerkenwell", 90, 20, "Series B", 60, 1500, "Prescription skincare D2C growing London ops", "Series B Funded"),
+    ("Paddle (3)", "primer.io", "Payments Infra", "Farringdon", 200, 75, "Series C", 65, 3000, "Payments infrastructure growing London engineering", "Series C Funded"),
+    ("Elder", "elder.org", "Care Tech", "Holborn", 150, 30, "Series B", 55, 2500, "Live-in care platform growing London commercial team", "Series B Funded"),
+    ("Cera Care", "ceracare.co.uk", "HealthTech / Care", "Southwark", 500, 150, "Series C", 50, 6000, "AI-powered home care scaling London operations", "Series C Funded"),
+    ("Nested (2)", "koto.io", "FinTech / Lending", "Shoreditch", 70, 20, "Series A", 65, 1500, "Social credit scoring startup growing London team", "Series A Funded"),
+    ("Fluro", "fluro.co", "FinTech / Lending", "Moorgate", 80, 22, "Series A", 60, 1500, "Fair lending platform growing London operations", "Series A Funded"),
+    ("Wayhome", "wayhome.co.uk", "PropTech", "Farringdon", 60, 15, "Series A", 60, 1500, "Gradual homeownership startup scaling London team", "Series A Funded"),
+    ("Tally", "tally.so", "Productivity", "Shoreditch", 30, 8, "Seed", 50, 1000, "Form builder opening first London office", "Seed Funded"),
+    ("Ravio", "ravio.com", "HR Tech / Comp", "Old Street", 70, 18, "Series A", 65, 1500, "Real-time compensation platform growing London team", "Series A Funded"),
+    ("Beam", "beam.org", "Social Impact Tech", "Holborn", 80, 12, "Series A", 60, 1500, "Homeless support platform growing London operations", "Series A Funded"),
+    ("Treecard", "treecard.org", "FinTech / Climate", "Shoreditch", 50, 10, "Series A", 55, 1000, "Wooden debit card startup growing London team", "Series A Funded"),
+    ("Hubble", "hubblehq.com", "PropTech / Office", "Clerkenwell", 100, 20, "Series B", 60, 2000, "Flexible office marketplace growing London team", "Series B Funded"),
+    ("Juro", "juro.com", "LegalTech", "Shoreditch", 120, 30, "Series B", 65, 2500, "AI contract platform growing London sales and product", "Series B Funded"),
+    ("Coconut", "getcoconut.com", "FinTech / Accounting", "Farringdon", 50, 8, "Series A", 55, 1000, "Freelancer banking app growing London team", "Series A Funded"),
+    ("Safeguard Global", "safeguardglobal.com", "HR / EOR", "City of London", 1200, 300, "Private", 55, 8000, "Employer of record expanding London EMEA hub", "London Expansion"),
+    ("Remote", "remote.com", "HR / EOR", "Shoreditch", 1800, 500, "Series C", 40, 5000, "Remote HR platform opening first London office", "New London Office"),
+    ("Papaya Global", "papayaglobal.com", "HR / Payroll", "City of London", 700, 440, "Series D", 60, 5000, "Global payroll platform growing London operations", "London Expansion"),
+    ("WorkMotion", "workmotion.com", "HR Tech", "Old Street", 250, 55, "Series B", 55, 3000, "Berlin HR compliance platform opening London office", "New London Office"),
+    ("Improbable Worlds", "morpheusxr.com", "Metaverse / VR", "Spitalfields", 100, 30, "Series A", 70, 2000, "Immersive tech startup scaling London team", "Series A Funded"),
+    ("ComplyAdvantage", "complyadvantage.com", "RegTech / AML", "Old Street", 500, 180, "Series C", 65, 6000, "AML compliance platform expanding London engineering", "Series C Funded"),
+    ("Currencycloud", "currencycloud.com", "FinTech / FX", "City of London", 350, 160, "Acquired", 60, 5000, "Visa-owned FX platform maintaining London HQ", "Moderate Growth"),
+    ("Cuvva", "cuvva.com", "InsurTech", "Shoreditch", 100, 32, "Series B", 65, 2000, "Pay-as-you-go car insurance growing London team", "Series B Funded"),
+    ("Oxbotica", "oxbotica.com", "Autonomous Vehicles", "Oxford / King's Cross", 300, 225, "Series C", 80, 6000, "Oxford AV company opening London demo and sales office", "New London Office"),
+    ("Oriole Networks", "oriole.ai", "AI / Networking", "Shoreditch", 50, 15, "Series A", 70, 1500, "AI networking startup in early London growth", "Seed Funded"),
+    ("Thought Machine (3)", "bud.co", "Open Banking AI", "Southwark", 150, 80, "Series B", 60, 3000, "AI-powered open banking platform growing London team", "Series B Funded"),
+    ("SafetyCulture", "safetyculture.com", "Workplace Safety", "Shoreditch", 800, 280, "Series D", 55, 6000, "Sydney safety platform expanding London for EMEA", "London Expansion"),
+    ("Airwallex", "airwallex.com", "FinTech / Payments", "City of London", 1500, 900, "Series E", 65, 10000, "Melbourne payments platform scaling London for Europe", "London Expansion"),
+    ("Canva (2)", "lottiefiles.com", "Design Tools", "Shoreditch", 120, 50, "Series B", 55, 2000, "Animation design platform opening London creative office", "New London Office"),
+    ("Legl", "legl.com", "LegalTech", "Clerkenwell", 80, 12, "Series A", 65, 1500, "Legal onboarding platform growing London team", "Series A Funded"),
+    ("Globacap", "globacap.com", "FinTech / Securities", "City of London", 100, 25, "Series B", 70, 2000, "Digital securities platform growing City office", "Series B Funded"),
+    ("Perlego", "perlego.com", "EdTech", "Shoreditch", 150, 40, "Series B", 55, 2500, "Online textbook library scaling London team", "Series B Funded"),
+    ("Ravelin", "ravelin.com", "Fraud / AI", "Farringdon", 150, 35, "Series B", 70, 2500, "Payment fraud detection growing London engineering", "Series B Funded"),
+    ("Thirdfort", "thirdfort.com", "RegTech / PropTech", "Moorgate", 120, 28, "Series B", 65, 2000, "Property verification platform growing London ops", "Series B Funded"),
+    ("Fidel API", "fidel.uk", "FinTech / Card Data", "Old Street", 100, 65, "Series B", 60, 2000, "Card-linked data platform growing London team", "Series B Funded"),
+    ("CoGo", "cogo.co", "FinTech / Carbon", "Southwark", 100, 20, "Series A", 55, 1500, "Carbon tracking fintech growing London commercial", "Series A Funded"),
+    ("Bought By Many", "boughtbymany.com", "InsurTech / Pet", "Spitalfields", 200, 130, "Series D", 60, 3000, "Pet insurance disruptor growing London team", "Series D Funded"),
+    ("Crezco", "crezco.com", "Open Banking", "Holborn", 60, 12, "Series A", 65, 1500, "Open banking payments startup scaling London team", "Series A Funded"),
+]
+
+def _generate_companies():
+    """Generate companies from the compact data above."""
+    generated = []
+    first_names = ["James","Sarah","Michael","Emma","David","Sophie","Tom","Lucy","Alex","Rachel","Chris","Hannah","Mark","Olivia","Ben","Charlotte","Dan","Emily","Will","Kate"]
+    last_names = ["Taylor","Williams","Brown","Davies","Wilson","Evans","Roberts","Clark","Mitchell","Lewis","Walker","Harris","Turner","Morgan","Phillips","Stewart","Collins","Murray","Bell","Grant"]
+    titles = ["CEO","CTO","CFO","COO","VP Real Estate","Head of Workplace","VP EMEA","GM UK","Country Manager","Chief People Officer","Head of Expansion","Director of Operations"]
+    for i, row in enumerate(GEN_COMPANIES_DATA):
+        name, domain, industry, submarket, emps, funding_m, rnd, hybrid, sqft, summary, signal = row
+        fn = first_names[i % len(first_names)]
+        ln = last_names[i % len(last_names)]
+        title = titles[i % len(titles)]
+        email_prefix = f"{fn[0].lower()}.{ln.lower()}"
+        funding_date = f"202{random.choice([5,6])}-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
+        trend_base = max(3, sqft // 800)
+        trend = [{"month": m, "count": max(1, int(trend_base * (0.5 + 0.1*j) + random.randint(-2,3)))} for j, m in enumerate(["Oct","Nov","Dec","Jan","Feb","Mar"])]
+        ev_date1 = f"2025-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
+        ev_date2 = f"2026-{random.randint(1,3):02d}-{random.randint(1,28):02d}"
+        generated.append({
+            "name": name, "domain": domain, "industry": industry,
+            "hq_city": "London", "hq_state": "England", "hq_country": "UK",
+            "submarket": submarket, "employee_count": emps, "founded_year": random.randint(2005, 2022),
+            "funding_total_usd": funding_m * 1_000_000,
+            "latest_funding_round": rnd,
+            "latest_funding_date": funding_date,
+            "latest_funding_amount": funding_m * 1_000_000,
+            "revenue_range": "$10M-$50M" if funding_m < 100 else "$50M-$100M" if funding_m < 300 else "$100M-$500M" if funding_m < 800 else "$500M-$1B",
+            "glassdoor_rating": round(random.uniform(3.0, 4.5), 1),
+            "hybrid_percentage": hybrid,
+            "estimated_sqft": sqft,
+            "website": f"https://{domain}",
+            "description": f"{name} is a {industry.lower()} company. {summary}.",
+            "contact_name": f"{fn} {ln}", "contact_title": title,
+            "contact_email": f"{email_prefix}@{domain}",
+            "contact_phone": f"+44 20 {random.randint(7000,7999)} {random.randint(1000,9999)}",
+            "signal_tags": json.dumps([signal, f"{rnd} Funded"] if "Funded" not in signal else [signal]),
+            "ai_summary": f"{summary}. {trend[-1]['count']} roles posted in London, seeking ~{sqft//1000}K SF in {submarket}.",
+            "ai_description": f"{name} is expanding its London presence in the {submarket} area. With {emps} employees globally and {rnd} funding of ${funding_m}M, they represent a strong prospect for {sqft//1000}K SF of office space.",
+            "hiring_trend": json.dumps(trend),
+            "evidence": json.dumps([
+                {"date": ev_date1, "event": "Funding" if "Fund" in signal else "Growth", "description": f"Key milestone for {name}."},
+                {"date": ev_date2, "event": "Hiring", "description": f"{trend[-1]['count']} London roles posted across multiple functions."},
+            ]),
+        })
+    return generated
+
+DEMO_COMPANIES.extend(_generate_companies())
+
 JOB_TITLES = [
     "Software Engineer", "Senior Software Engineer", "Staff Engineer",
     "Product Manager", "Senior Product Manager", "Engineering Manager",
@@ -1101,15 +1309,21 @@ HYBRID_PHRASES = [
 ]
 
 
+# Large established companies to exclude - they already have offices
+EXCLUDE_NAMES = {"Stripe", "Figma", "Checkout.com", "Klarna", "Deliveroo", "Wise", "Revolut", "UiPath", "Farfetch", "THG"}
+
+
 def seed_database():
     """Seed the database with London/Europe-focused demo data."""
     init_db()
 
-    for company in DEMO_COMPANIES:
+    companies_to_seed = [c for c in DEMO_COMPANIES if c["name"] not in EXCLUDE_NAMES]
+
+    for company in companies_to_seed:
         upsert_company(company)
 
     all_jobs = []
-    for company in DEMO_COMPANIES:
+    for company in companies_to_seed:
         trend = json.loads(company.get("hiring_trend", "[]"))
         latest_count = trend[-1]["count"] if trend else 20
         num_jobs = latest_count + random.randint(-5, 10)
@@ -1143,7 +1357,7 @@ def seed_database():
     bulk_insert_jobs(all_jobs)
 
     conn = get_db()
-    for company in DEMO_COMPANIES:
+    for company in companies_to_seed:
         count = conn.execute(
             "SELECT COUNT(*) FROM job_listings WHERE company_name = ?",
             (company["name"],)
@@ -1156,7 +1370,7 @@ def seed_database():
     conn.close()
 
     scored = score_all_companies()
-    print(f"Seeded {len(DEMO_COMPANIES)} companies, {len(all_jobs)} job listings, scored {scored} companies.")
+    print(f"Seeded {len(companies_to_seed)} companies, {len(all_jobs)} job listings, scored {scored} companies.")
 
 
 if __name__ == "__main__":

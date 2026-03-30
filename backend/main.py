@@ -61,11 +61,14 @@ async def api_companies(
     industry: str = Query(None),
     market: str = Query(None),
     search: str = Query(None),
+    min_sqft: int = Query(None),
+    max_sqft: int = Query(None),
 ):
     companies, total = get_companies(
         page=page, per_page=per_page, sort_by=sort_by,
         sort_order=sort_order, min_score=min_score,
         industry=industry, market=market, search=search,
+        min_sqft=min_sqft, max_sqft=max_sqft,
     )
     # Parse score_breakdown JSON
     for c in companies:
