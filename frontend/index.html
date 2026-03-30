@@ -77,10 +77,11 @@
   }
 
   /* === MAIN === */
-  main { padding: 88px 24px 48px; max-width: 1280px; margin: 0 auto; }
+  main { padding: 88px 24px 48px; max-width: 1280px; margin: 0 auto; transition: max-width 0.3s; }
+  main.wide { max-width: 100%; padding-left: 32px; padding-right: 32px; }
 
   /* Header */
-  .header { margin-bottom: 48px; }
+  .header { margin-bottom: 48px; transition: all 0.3s; }
   .header-top { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; }
   .header-date { display: flex; align-items: center; gap: 8px; color: #10b981; margin-bottom: 4px; }
   .header-date svg { width: 16px; height: 16px; }
@@ -228,14 +229,14 @@
     background: #151619; border: 1px solid rgba(255,255,255,0.05);
     border-radius: 16px; overflow: hidden;
   }
-  .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; text-align: left; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1400px; }
   th {
-    padding: 16px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    padding: 10px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.1em; color: rgba(255,255,255,0.3); background: rgba(0,0,0,0.4);
     border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap;
   }
-  td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top; }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; white-space: nowrap; }
   tr.row-data { cursor: pointer; transition: background 0.15s; }
   tr.row-data:hover { background: rgba(255,255,255,0.02); }
   tr.row-data:hover .td-company-name { color: #34d399; }
@@ -552,6 +553,7 @@ function switchView(view) {
   document.getElementById('tab-brief').classList.toggle('active', view === 'brief');
   document.getElementById('tab-spreadsheet').classList.toggle('active', view === 'spreadsheet');
   document.getElementById('pageTitle').textContent = view === 'brief' ? 'Daily Intelligence' : 'Prospect Database';
+  document.querySelector('main').classList.toggle('wide', view === 'spreadsheet');
   expandedRow = null;
   renderView();
 }
