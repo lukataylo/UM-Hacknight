@@ -2,72 +2,33 @@
 
 **AI-powered CRE sales intelligence agent that identifies companies about to open, expand, or relocate offices in London.**
 
-SquareFootLoose scrapes job boards, company databases, and funding news daily to spot companies that are hiring in hybrid mode, opening new offices, or moving into fast-growing submarkets. It cross-checks those signals against funding rounds, headcount data, and market intelligence to prioritize accounts most likely to need office space in the next 6-18 months.
+SquareFootLoose pulls company data from LinkedIn via Bright Data, enriches it with Perplexity AI for funding, revenue, contacts, and news, then scores and ranks companies most likely to need office space. The dashboard is a static site deployed on GitHub Pages, refreshed daily via GitHub Actions.
 
-Every morning, it delivers a scored list of high-priority prospects to your sales team, enriched with location, hiring trend, and competitive context.
+**Live:** [https://lukataylo.github.io/UM-Hacknight/](https://lukataylo.github.io/UM-Hacknight/)
 
 ## Architecture
 
 ```
-                         +------------------+
-                         |   Bright Data    |
-                         |   Datasets API   |
-                         +--------+---------+
-                                  |
-                    LinkedIn Jobs | Indeed Jobs
-                    Crunchbase    | LinkedIn Companies
-                    ZoomInfo      | Glassdoor
-                                  |
-                         +--------v---------+
-                         |   Data Pipeline  |
-                         |  (bright_data.py)|
-                         +--------+---------+
-                                  |
-                         normalize & deduplicate
-                                  |
-                         +--------v---------+
-                         |     SQLite DB    |
-                         |  companies       |
-                         |  job_listings    |
-                         |  pipeline_runs   |
-                         +--------+---------+
-                                  |
-                         +--------v---------+
-                         |  Scoring Engine  |
-                         |   (scorer.py)    |
-                         |                  |
-                         |  7 weighted      |
-                         |  signals:        |
-                         |  - hiring vel.   |
-                         |  - funding       |
-                         |  - headcount     |
-                         |  - industry fit  |
-                         |  - location      |
-                         |  - stage         |
-                         |  - glassdoor     |
-                         +--------+---------+
-                                  |
-                         +--------v---------+
-                         |    FastAPI       |
-                         |   (main.py)     |
-                         +--------+---------+
-                                  |
-                         +--------v---------+
-                         |    Frontend      |
-                         |  Single-page     |
-                         |  Dashboard       |
-                         |                  |
-                         |  Morning Brief   |
-                         |  (card grid)     |
-                         |                  |
-                         |  Spreadsheet     |
-                         |  (data table)    |
-                         +------------------+
+GitHub Pages (static)              Local CLI / GitHub Actions
+┌──────────────────────┐          ┌──────────────────────────────┐
+│  index.html           │  ←JSON   │  Bright Data LinkedIn API     │
+│  data/companies.json  │  files   │  Perplexity Sonar API         │
+│  data/meta.json       │          │  manage.py (CLI tool)         │
+│  Password gate        │          │  → scores, exports, pushes    │
+└──────────────────────┘          └──────────────────────────────┘
 ```
+
+### Data Sources
+
+| Source | What it provides | How it's used |
+|---|---|---|
+| **Bright Data** (LinkedIn Companies) | Employee count, industry, HQ location, LinkedIn URL, embedded funding data, featured employees, recent posts | New company discovery + base profile data |
+| **Perplexity AI** (Sonar) | AI summaries, valuations, revenue estimates, CEO/CRO contacts, Glassdoor ratings, office size estimates, recent news, hiring signals | Deep enrichment of existing companies |
+| **Local curation** | Glassdoor ratings, funding data, intelligence summaries | Manual enrichment for data gaps |
 
 ## Scoring Model
 
-Each company receives a 0-100 score based on seven weighted signals:
+Each company receives a 0–100 score based on seven weighted signals:
 
 | Signal | Weight | What it measures |
 |---|---|---|
@@ -75,87 +36,161 @@ Each company receives a 0-100 score based on seven weighted signals:
 | Funding Recency | 20% | How recently they raised, round type, amount |
 | Headcount Growth | 15% | Growth rate estimated from job listings |
 | Industry Fit | 10% | Whether the industry typically needs office space |
-| Location Match | 10% | Presence in target markets (London, etc.) |
-| Company Stage | 10% | Series A-C are prime movers for office expansion |
+| Location Match | 10% | Presence in London and target markets |
+| Company Stage | 10% | Series A–C are prime movers for office expansion |
 | Glassdoor Sentiment | 5% | Low ratings + high growth = likely to upgrade space |
 
-## Data Sources (via Bright Data)
-
-- **LinkedIn Job Listings** - hybrid/in-office role detection
-- **Indeed Job Listings** - hiring volume by location
-- **Crunchbase Companies** - funding rounds, headcount, stage
-- **LinkedIn Company Info** - employee count, industry, HQ
-- **ZoomInfo Companies** - revenue, contacts, financials
-- **Glassdoor Companies** - ratings, office culture signals
-
-## Dashboard Views
+## Dashboard Features
 
 ### Morning Brief
 Card grid showing each prospect with:
-- Company favicon, name, location, submarket
-- Intel score (colour-coded: green 80+, amber 60-79, red <60)
-- Signal tags (Hiring Surge, Series C Funded, New London Office, etc.)
-- AI-generated summary in italic serif
+- Company favicon, name, location
+- Intel score (colour-coded: green 80+, amber 60–79, red <60) with **hover tooltip** showing 7-signal breakdown
+- Signal tags (Hiring Surge, Series C Funded, Growth Stage, etc.)
+- **Stats row**: employees, funding amount, round type, Glassdoor rating
+- AI-generated intelligence summary (truncated to 3 lines)
 - Hiring trend mini bar chart (6-month)
+- **Star/bookmark** button (persisted in localStorage)
+- **NEW badge** on recently added companies (blue pulsing pill)
 - Expandable "Why now?" evidence timeline
 
 ### Spreadsheet
 Full data table with:
-- Sortable columns (score, hiring, hybrid %, funding)
-- Expandable rows with AI intelligence report
-- Evidence timeline and signal tags
-- Decision maker contact card (name, title, email, phone)
+- **Clickable sortable columns** (score, name, employees, funding, etc.) with ascending/descending arrows
+- **Star column** for bookmarking
+- **NEW badges** inline with company name
+- Score tooltip on hover
+- Expandable rows with AI intelligence report, evidence timeline, signal tags
+- Decision maker contact card (name, title, estimated email)
 - "Push to CRM" action button
-- CSV export
+- CSV export (client-side, all filtered data)
+
+### Live News Ticker
+Bloomberg-style scrolling ticker at the top showing curated intelligence summaries for top-scored companies, colour-coded by priority.
+
+### Filters
+- City, signal type, industry, size (sqft) dropdowns
+- **Starred Only** — show only bookmarked companies
+- **New Prospects** — show recently added companies
+- Full-text search across name, domain, and description
+
+### Password Protection
+SHA-256 hash-verified password gate. Password: `squarefootloose`
 
 ## Quick Start
 
+### View the dashboard
+Open [https://lukataylo.github.io/UM-Hacknight/](https://lukataylo.github.io/UM-Hacknight/) and enter the password.
+
+### Local development
+
 ```bash
+# Clone
+git clone https://github.com/lukataylo/UM-Hacknight.git
+cd UM-Hacknight
+
 # Install dependencies
 pip install -r requirements.txt
 
-# Seed demo data (38 London-focused companies)
-python -m backend.seed_demo
+# Set API keys
+cp .env.example .env  # then edit with your keys
 
-# Run the server
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+# Check database status
+python manage.py status
 
-# Open http://localhost:8000
+# Pull new companies from Bright Data
+python manage.py pull monzo-bank revolut stripe
+
+# Enrich with Perplexity AI
+python manage.py enrich --perplexity --limit 20
+
+# Apply Glassdoor ratings + funding
+python manage.py enrich
+
+# Re-score, export, and push to GitHub Pages
+python manage.py push
 ```
+
+## CLI Reference (`manage.py`)
+
+| Command | Description |
+|---|---|
+| `status` | Show database stats (total, with industry, funding, Glassdoor, etc.) |
+| `pull <slugs...>` | Pull new companies from Bright Data LinkedIn API. Accepts LinkedIn slugs or full URLs |
+| `enrich` | Apply known Glassdoor ratings + crawl Crunchbase funding |
+| `enrich --perplexity` | Deep enrichment via Perplexity AI (summaries, revenue, contacts, news, office size) |
+| `enrich --perplexity --force` | Re-enrich all companies, not just those missing data |
+| `enrich --perplexity --limit 10` | Limit to N companies |
+| `enrich --glassdoor-only` | Only apply Glassdoor ratings |
+| `enrich --funding-only` | Only crawl funding data |
+| `rate <company> <rating>` | Manually set a Glassdoor rating (1.0–5.0) |
+| `push` | Re-score all companies, export to JSON, git commit + push |
 
 ## Project Structure
 
 ```
+index.html                  Static dashboard (vanilla HTML/CSS/JS, deployed via GitHub Pages)
+data/
+  companies.json            Pre-scored company data (loaded by frontend)
+  meta.json                 Last updated timestamp and counts
+manage.py                   Local CLI for pulling, enriching, and pushing data
+scripts/
+  export_data.py            Export SQLite to static JSON files
 backend/
-  main.py           FastAPI server and API endpoints
-  bright_data.py    Bright Data dataset API client
-  scorer.py         Company scoring algorithm (7 signals)
-  database.py       SQLite schema, queries, CRUD
-  seed_demo.py      Demo data seeder (38 companies)
-  config.py         API keys, weights, target markets
-
-frontend/
-  index.html        Single-page dashboard (vanilla HTML/CSS/JS)
-
-.env                API keys and configuration
-requirements.txt    Python dependencies
+  bright_data.py            Bright Data LinkedIn Companies API client
+  perplexity.py             Perplexity Sonar API client for deep enrichment
+  scorer.py                 Company scoring algorithm (7 weighted signals)
+  database.py               SQLite schema, queries, CRUD
+  config.py                 API keys, weights, target markets
+  seed_demo.py              Demo data seeder (not used in production)
+  pipeline_cli.py           CLI entry point for GitHub Actions pipeline
+  main.py                   FastAPI server (legacy, not used in static deployment)
+.github/workflows/
+  refresh-data.yml          Daily data refresh (Bright Data + Perplexity + export + push)
+  pull-companies.yml        On-demand company pull triggered from UI or GitHub
+.env                        API keys (not committed)
+requirements.txt            Python dependencies
 ```
 
-## API Endpoints
+## Environment Variables
 
-| Method | Path | Description |
+| Variable | Required | Description |
 |---|---|---|
-| `GET` | `/` | Serve dashboard |
-| `GET` | `/api/stats` | Dashboard summary stats |
-| `GET` | `/api/companies` | Paginated, filterable company list |
-| `GET` | `/api/companies/{id}` | Company detail with jobs and score breakdown |
-| `POST` | `/api/pipeline/run` | Trigger Bright Data ingestion pipeline |
-| `GET` | `/api/pipeline/status` | Check pipeline run status |
-| `GET` | `/api/export` | Download scored companies as CSV |
+| `BRIGHT_DATA_API_KEY` | Yes | Bright Data API key for LinkedIn Companies dataset |
+| `PERPLEXITY_API_KEY` | Optional | Perplexity Sonar API key for deep enrichment |
+| `DATABASE_PATH` | No | SQLite path (default: `./cre_intel.db`) |
+
+For GitHub Actions, add these as repository secrets in Settings → Secrets → Actions.
+
+## GitHub Actions
+
+### Refresh Data (daily)
+Runs at 6 AM UTC daily or on manual dispatch:
+1. Pulls new companies from Bright Data
+2. Enriches top 20 via Perplexity (if key is set)
+3. Exports to JSON and pushes to GitHub Pages
+
+### Pull Companies (on-demand)
+Triggered from the dashboard UI or GitHub Actions UI:
+1. Accepts comma-separated LinkedIn slugs
+2. Pulls from Bright Data, enriches, scores
+3. Exports and pushes
+
+## Responsive Design
+
+The dashboard scales across all screen sizes:
+- **2200px+** (4K/ultrawide): 5-column card grid, wider layout
+- **1600px+** (large monitors): 4-column cards, expanded padding
+- **1024–1600px** (desktop): 3-column cards, default layout
+- **700–1024px** (tablet): 2-column cards, stacked nav/filters
+- **<700px** (mobile): single column, compact filters, horizontal table scroll
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, SQLite, httpx
-- **Frontend**: Vanilla HTML/CSS/JS (no build step)
-- **Data**: Bright Data Datasets API
+- **Frontend**: Vanilla HTML/CSS/JS (no build step, no framework)
+- **Hosting**: GitHub Pages (static)
+- **Data**: Bright Data Datasets API + Perplexity Sonar API
+- **Database**: SQLite (local only, for data processing)
+- **Scoring**: Python (backend/scorer.py)
+- **CI/CD**: GitHub Actions
 - **Fonts**: Inter, JetBrains Mono, Libre Baskerville
