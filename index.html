@@ -343,6 +343,7 @@
     transition: background 0.2s; font-family: inherit;
   }
   .crm-btn:hover { background: #34d399; }
+  .estimated-tag { font-size: 8px; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
 
   /* Table Footer */
   .table-footer {
@@ -1180,7 +1181,7 @@ function renderTable() {
         <td>${c.glassdoor_rating ? `<span style="font-size:13px;color:${c.glassdoor_rating >= 4.0 ? '#10b981' : c.glassdoor_rating >= 3.5 ? '#f59e0b' : '#f43f5e'}">${c.glassdoor_rating}/5</span>` : '<span style="color:rgba(255,255,255,0.2)">-</span>'}</td>
         <td>
           <div class="td-contact-name">${esc(c.contact_name || '')}</div>
-          <div class="td-contact-title">${esc(c.contact_title || '')}</div>
+          <div class="td-contact-title">${esc((c.contact_title || '').replace(' (estimated)',''))}${(c.contact_title || '').includes('estimated') ? ' <span class="estimated-tag">est.</span>' : ''}</div>
         </td>
         <td>
           ${c.contact_email ? `<a href="mailto:${esc(c.contact_email)}" style="color:#34d399;text-decoration:none;font-size:12px" onclick="event.stopPropagation()">${esc(c.contact_email)}</a>` : '<span style="color:rgba(255,255,255,0.2);font-size:11px">-</span>'}
@@ -1227,7 +1228,7 @@ function renderTable() {
               <div class="dm-avatar">${icons.user}</div>
               <div>
                 <div class="dm-name">${esc(c.contact_name || 'Not available')}</div>
-                <div class="dm-title">${esc(c.contact_title || '')}</div>
+                <div class="dm-title">${esc((c.contact_title || '').replace(' (estimated)',''))}${(c.contact_title || '').includes('estimated') ? ' <span class="estimated-tag">estimated</span>' : ''}</div>
               </div>
             </div>
             <div class="dm-contacts">
