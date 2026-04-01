@@ -127,148 +127,101 @@ DISCOVERY_KEYWORDS = [
 ]
 
 
+def _name_to_linkedin_url(name: str) -> str:
+    """Convert a company name to a best-guess LinkedIn company URL."""
+    slug = name.lower().strip().replace(" ", "-").replace(".", "").replace(",", "")
+    slug = slug.replace("&", "and").replace("'", "")
+    return f"https://www.linkedin.com/company/{slug}"
+
+
 async def collect_job_listings(records_limit: int = 200) -> int:
-    """Collect job listings from LinkedIn and Indeed with varied discovery keywords."""
+    """Collect job listings from Indeed (the active job dataset)."""
     total_inserted = 0
 
-    # Pick a random subset of markets and keywords each run to discover new companies
-    markets = random.sample(TARGET_MARKETS, min(5, len(TARGET_MARKETS)))
-    keywords = random.sample(DISCOVERY_KEYWORDS, min(6, len(DISCOVERY_KEYWORDS)))
+    if not DATASET_INDEED_JOBS:
+        logger.warning("No job listing dataset configured")
+        return 0
 
-    for dataset_id, source in [
-        (DATASET_LINKEDIN_JOBS, "linkedin"),
-        (DATASET_INDEED_JOBS, "indeed"),
-    ]:
-        try:
-            # Combine location filters with keyword searches to find new companies
-            filters = [{"location": market} for market in markets]
-            filters.extend([{"keyword": kw} for kw in keywords[:3]])
-            records = await collect_dataset(dataset_id, records_limit=records_limit, filters=filters)
+    # Vary keywords each run to discover new companies
+    keywords = random.sample(DISCOVERY_KEYWORDS, min(4, len(DISCOVERY_KEYWORDS)))
+    markets = random.sample(TARGET_MARKETS, min(3, len(TARGET_MARKETS)))
 
-            normalized = []
-            for r in records:
-                is_hybrid, is_office = _is_hybrid_or_office(r)
-                normalized.append({
-                    "company_name": r.get("company_name") or r.get("company") or r.get("employer") or "",
-                    "company_domain": _extract_domain(r.get("company_url") or r.get("company_link") or ""),
-                    "title": r.get("title") or r.get("job_title") or "",
-                    "location": r.get("location") or r.get("job_location") or "",
-                    "job_type": r.get("job_type") or r.get("employment_type") or "",
-                    "date_posted": r.get("date_posted") or r.get("post_date") or datetime.now().isoformat(),
-                    "source": source,
-                    "is_hybrid": 1 if is_hybrid else 0,
-                    "is_office": 1 if is_office else 0,
-                    "raw_data": json.dumps(r),
-                })
+    try:
+        filters = [{"url": f"https://www.indeed.com/jobs?q={kw}&l={market}"}
+                    for kw in keywords for market in markets]
+        records = await collect_dataset(DATASET_INDEED_JOBS, records_limit=records_limit, filters=filters[:10])
 
-            inserted = db.bulk_insert_jobs(normalized)
-            total_inserted += inserted
+        normalized = []
+        for r in records:
+            is_hybrid, is_office = _is_hybrid_or_office(r)
+            normalized.append({
+                "company_name": r.get("company_name") or r.get("company") or r.get("employer") or "",
+                "company_domain": _extract_domain(r.get("company_url") or r.get("company_link") or ""),
+                "title": r.get("title") or r.get("job_title") or "",
+                "location": r.get("location") or r.get("job_location") or "",
+                "job_type": r.get("job_type") or r.get("employment_type") or "",
+                "date_posted": r.get("date_posted") or r.get("post_date") or datetime.now().isoformat(),
+                "source": "indeed",
+                "is_hybrid": 1 if is_hybrid else 0,
+                "is_office": 1 if is_office else 0,
+                "raw_data": json.dumps(r),
+            })
 
-            # Ensure every company from new jobs exists in the companies table
-            seen_companies = set()
-            for job in normalized:
-                company_name = job.get("company_name", "")
-                if company_name and company_name not in seen_companies:
-                    seen_companies.add(company_name)
-                    company_domain = job.get("company_domain", "")
-                    db.upsert_company({"name": company_name, "domain": company_domain or None})
+        inserted = db.bulk_insert_jobs(normalized)
+        total_inserted += inserted
 
-            logger.info(f"Collected {len(normalized)} {source} listings, {inserted} new")
+        # Create company rows for new companies
+        seen = set()
+        for job in normalized:
+            name = job.get("company_name", "")
+            if name and name not in seen:
+                seen.add(name)
+                db.upsert_company({"name": name, "domain": job.get("company_domain") or None})
 
-        except Exception as e:
-            logger.error(f"Error collecting {source} jobs: {e}")
+        logger.info(f"Collected {len(normalized)} indeed listings, {inserted} new")
+    except Exception as e:
+        logger.error(f"Error collecting indeed jobs: {e}")
 
     return total_inserted
 
 
 async def collect_company_intelligence(records_limit: int = 100) -> int:
-    """Collect company data from Crunchbase, LinkedIn, ZoomInfo, Glassdoor.
-    Enriches known companies AND discovers new ones via keyword searches."""
+    """Enrich companies via LinkedIn Companies dataset (requires LinkedIn URLs)."""
+    if not DATASET_LINKEDIN_COMPANIES:
+        logger.warning("No LinkedIn Companies dataset configured")
+        return 0
+
     total_upserted = 0
 
-    # --- Part 1: Enrich companies we already know from job listings ---
+    # Find companies missing data (no industry or employee count)
     conn = db.get_db()
-    companies_raw = conn.execute(
-        "SELECT DISTINCT company_name FROM job_listings WHERE company_name != '' ORDER BY created_at DESC LIMIT 200"
+    sparse = conn.execute(
+        "SELECT name, linkedin_url FROM companies WHERE industry IS NULL OR employee_count IS NULL ORDER BY last_updated ASC LIMIT 30"
     ).fetchall()
     conn.close()
-    company_names = [r["company_name"] for r in companies_raw]
 
-    enrichment_datasets = [
-        (DATASET_CRUNCHBASE, "crunchbase"),
-        (DATASET_LINKEDIN_COMPANIES, "linkedin"),
-    ]
+    # Build LinkedIn URLs — use stored URL if available, otherwise guess from name
+    urls = []
+    for row in sparse:
+        url = row["linkedin_url"] if row["linkedin_url"] else _name_to_linkedin_url(row["name"])
+        urls.append({"url": url})
 
-    for dataset_id, source in enrichment_datasets:
-        try:
-            # Enrich the newest companies we don't have full data for yet
-            conn = db.get_db()
-            sparse_companies = conn.execute(
-                "SELECT name FROM companies WHERE industry IS NULL OR employee_count IS NULL ORDER BY last_updated ASC LIMIT 50"
-            ).fetchall()
-            conn.close()
-            enrich_names = [r["name"] for r in sparse_companies]
+    if not urls:
+        logger.info("All companies already enriched")
+        return 0
 
-            if not enrich_names:
-                enrich_names = company_names[:50]
+    try:
+        records = await collect_dataset(DATASET_LINKEDIN_COMPANIES, records_limit=len(urls), filters=urls)
 
-            filters = [{"company_name": name} for name in enrich_names]
-            records = await collect_dataset(dataset_id, records_limit=records_limit, filters=filters)
+        for r in records:
+            company_data = _normalize_company(r, "linkedin")
+            if company_data.get("name"):
+                db.upsert_company(company_data)
+                total_upserted += 1
 
-            for r in records:
-                company_data = _normalize_company(r, source)
-                if company_data.get("name"):
-                    db.upsert_company(company_data)
-                    total_upserted += 1
-
-            logger.info(f"Enriched {len(records)} companies from {source}")
-
-        except Exception as e:
-            logger.error(f"Error enriching from {source}: {e}")
-
-    # --- Part 2: Discover NEW companies via keyword/industry searches ---
-    discovery_industries = random.sample([
-        "fintech", "artificial intelligence", "cybersecurity", "saas",
-        "healthtech", "proptech", "edtech", "cleantech", "regtech",
-        "insurtech", "legaltech", "devtools", "data analytics",
-        "cloud infrastructure", "payments", "biotech", "robotics",
-    ], 4)
-
-    discovery_locations = random.sample(TARGET_MARKETS, min(3, len(TARGET_MARKETS)))
-
-    for dataset_id, source in [(DATASET_CRUNCHBASE, "crunchbase"), (DATASET_LINKEDIN_COMPANIES, "linkedin")]:
-        try:
-            # Search by industry + location to find companies not yet in our DB
-            filters = []
-            for industry in discovery_industries:
-                for location in discovery_locations:
-                    filters.append({"industry": industry, "location": location})
-
-            records = await collect_dataset(dataset_id, records_limit=50, filters=filters)
-
-            new_count = 0
-            for r in records:
-                company_data = _normalize_company(r, source)
-                if company_data.get("name"):
-                    db.upsert_company(company_data)
-                    new_count += 1
-
-            total_upserted += new_count
-            logger.info(f"Discovered {new_count} companies from {source} via keyword search")
-
-        except Exception as e:
-            logger.error(f"Error discovering companies from {source}: {e}")
-
-    # --- Part 3: Ensure all job-listing companies exist in companies table ---
-    for name in company_names:
-        conn = db.get_db()
-        existing = conn.execute(
-            "SELECT id FROM companies WHERE name = ?", (name,)
-        ).fetchone()
-        conn.close()
-        if not existing:
-            db.upsert_company({"name": name})
-            total_upserted += 1
+        logger.info(f"Enriched {total_upserted} companies from LinkedIn")
+    except Exception as e:
+        logger.error(f"Error enriching from LinkedIn: {e}")
 
     return total_upserted
 
@@ -296,16 +249,28 @@ def _normalize_company(record: dict, source: str) -> dict:
             "description": record.get("description") or record.get("short_description") or "",
         }
     elif source == "linkedin":
+        industries = record.get("industries") or record.get("industry") or ""
+        if isinstance(industries, list):
+            industries = ", ".join(industries[:3])
+        locations = record.get("locations") or []
+        hq_city = ""
+        hq_state = ""
+        if isinstance(locations, list) and locations:
+            loc = locations[0] if isinstance(locations[0], str) else ""
+            parts = [p.strip() for p in loc.split(",")]
+            if len(parts) >= 2:
+                hq_city = parts[-3] if len(parts) >= 3 else parts[0]
+                hq_state = parts[-2] if len(parts) >= 3 else parts[-1]
         data = {
             "name": record.get("name") or record.get("company_name") or "",
             "domain": _extract_domain(record.get("website") or ""),
-            "industry": record.get("industry") or "",
-            "hq_city": record.get("city") or record.get("headquarters", {}).get("city", "") if isinstance(record.get("headquarters"), dict) else record.get("hq_city", ""),
-            "hq_state": record.get("state") or "",
-            "employee_count": _parse_int(record.get("company_size") or record.get("employee_count") or record.get("followers_count")),
-            "linkedin_url": record.get("url") or record.get("linkedin_url") or "",
+            "industry": industries,
+            "hq_city": record.get("city") or hq_city,
+            "hq_state": record.get("state") or hq_state,
+            "employee_count": _parse_int(record.get("employees_in_linkedin") or record.get("company_size") or record.get("employee_count")),
+            "linkedin_url": f"https://www.linkedin.com/company/{record.get('id', '')}" if record.get("id") else record.get("url", ""),
             "website": record.get("website") or "",
-            "description": record.get("description") or record.get("about") or "",
+            "description": record.get("about") or record.get("description") or "",
         }
     elif source == "zoominfo":
         data = {
