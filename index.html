@@ -210,8 +210,28 @@
 
   /* AI Summary */
   .card-summary {
-    color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;
-    font-style: italic; font-family: 'Libre Baskerville', serif; margin-bottom: 24px;
+    color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.5;
+    font-style: italic; font-family: 'Libre Baskerville', serif; margin-bottom: 16px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden; min-height: 58px;
+  }
+
+  /* Card stats row */
+  .card-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .card-stat {
+    background: #151619; padding: 8px; text-align: center;
+  }
+  .card-stat-label {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: rgba(255,255,255,0.25); margin-bottom: 2px;
+  }
+  .card-stat-value {
+    font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    color: rgba(255,255,255,0.8);
   }
 
   /* Hiring Trend Chart */
@@ -991,6 +1011,24 @@ function renderCards() {
         </div>
         <div class="badges">${newBadge}${tags.map(t => `<span class="badge ${badgeVariant(t)}">${esc(t)}</span>`).join('')}</div>
         <div class="card-summary">"${esc(c.ai_summary || c.description || '')}"</div>
+        <div class="card-stats">
+          <div class="card-stat">
+            <div class="card-stat-label">Employees</div>
+            <div class="card-stat-value">${c.employee_count ? c.employee_count.toLocaleString() : '-'}</div>
+          </div>
+          <div class="card-stat">
+            <div class="card-stat-label">Funding</div>
+            <div class="card-stat-value">${formatMoney(c.latest_funding_amount || c.funding_total_usd)}</div>
+          </div>
+          <div class="card-stat">
+            <div class="card-stat-label">Round</div>
+            <div class="card-stat-value" style="font-size:10px;line-height:1.6">${esc(c.latest_funding_round || '-')}</div>
+          </div>
+          <div class="card-stat">
+            <div class="card-stat-label">Glassdoor</div>
+            <div class="card-stat-value" style="color:${c.glassdoor_rating ? (c.glassdoor_rating >= 4.0 ? '#10b981' : c.glassdoor_rating >= 3.5 ? '#f59e0b' : '#f43f5e') : 'rgba(255,255,255,0.2)'}">${c.glassdoor_rating ? c.glassdoor_rating + '/5' : '-'}</div>
+          </div>
+        </div>
         <div class="card-bottom">
           <div class="trend-chart">${renderTrendBars(c.hiring_trend)}</div>
           <button class="why-btn" id="card-btn-${c.id}" onclick="toggleCard(${c.id})">Why now? ${icons.chevDown}</button>
