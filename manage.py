@@ -3,10 +3,12 @@
 Local management CLI for SquareFootLoose.
 
 Commands:
-  python manage.py enrich     Crawl Glassdoor ratings + Crunchbase funding for all companies
-  python manage.py pull       Pull new companies from Bright Data LinkedIn API
-  python manage.py push       Export JSON, commit, and push to GitHub Pages
-  python manage.py status     Show database stats
+  python manage.py enrich                Apply Glassdoor ratings + crawl funding
+  python manage.py enrich --perplexity   Deep enrichment via Perplexity AI (summaries, funding, contacts, news)
+  python manage.py pull <slugs>          Pull new companies from Bright Data LinkedIn API
+  python manage.py push                  Export JSON, commit, and push to GitHub Pages
+  python manage.py status                Show database stats
+  python manage.py rate <company> <n>    Manually set a Glassdoor rating
 """
 import sys
 import os
@@ -89,6 +91,85 @@ def set_rating(company_name, rating):
     upsert_company({"name": row["name"], "domain": row["domain"] or None, "glassdoor_rating": rating})
     print(f"  {row['name']} -> {rating}/5")
     return 1
+
+
+# ---------------------------------------------------------------------------
+# PERPLEXITY AI ENRICHMENT
+# ---------------------------------------------------------------------------
+def enrich_perplexity(limit=50, force=False):
+    """Enrich companies using Perplexity Sonar API for deep intelligence."""
+    from backend.perplexity import enrich_company, apply_enrichment
+
+    conn = get_db()
+    if force:
+        companies = conn.execute(
+            "SELECT * FROM companies ORDER BY score DESC LIMIT ?", (limit,)
+        ).fetchall()
+    else:
+        # Prioritise companies missing key data
+        companies = conn.execute(
+            """SELECT * FROM companies
+               WHERE ai_description IS NULL
+                  OR revenue_range IS NULL
+                  OR contact_name IS NULL
+                  OR estimated_sqft IS NULL OR estimated_sqft = 0
+               ORDER BY score DESC LIMIT ?""",
+            (limit,)
+        ).fetchall()
+    conn.close()
+
+    if not companies:
+        print("All companies already enriched. Use --force to re-enrich.")
+        return 0
+
+    print(f"Enriching {len(companies)} companies via Perplexity AI...\n")
+    updated = 0
+    errors = 0
+
+    for row in companies:
+        row = dict(row)
+        name = row["name"]
+        domain = row.get("domain", "")
+        industry = row.get("industry", "")
+        emp = row.get("employee_count", 0)
+
+        try:
+            print(f"  Querying: {name}...", end=" ", flush=True)
+            data = enrich_company(name, domain, industry, emp)
+
+            if data:
+                update = apply_enrichment(row, data)
+                upsert_company(update)
+                updated += 1
+
+                # Show what was found
+                parts = []
+                if data.get("revenue_range"):
+                    parts.append(f"rev={data['revenue_range']}")
+                if data.get("latest_funding_round"):
+                    parts.append(f"round={data['latest_funding_round']}")
+                if data.get("glassdoor_rating"):
+                    parts.append(f"gd={data['glassdoor_rating']}")
+                if data.get("ceo_name"):
+                    parts.append(f"ceo={data['ceo_name']}")
+                if data.get("estimated_sqft"):
+                    parts.append(f"sqft={data['estimated_sqft']}")
+                if data.get("hiring_signals"):
+                    parts.append(f"hiring={data['hiring_signals']}")
+                print(" | ".join(parts) if parts else "updated")
+            else:
+                print("no data returned")
+                errors += 1
+
+            time.sleep(1)  # Rate limit courtesy
+
+        except Exception as e:
+            print(f"error: {e}")
+            errors += 1
+            time.sleep(2)
+
+    print(f"\nPerplexity enrichment: {updated} updated, {errors} errors")
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -437,10 +518,12 @@ def main():
     sub = parser.add_subparsers(dest="command")
 
     # enrich
-    enrich_p = sub.add_parser("enrich", help="Apply Glassdoor ratings + crawl funding data")
-    enrich_p.add_argument("--limit", type=int, default=50, help="Max companies to crawl for funding (default: 50)")
+    enrich_p = sub.add_parser("enrich", help="Enrich companies with Glassdoor, funding, or Perplexity AI")
+    enrich_p.add_argument("--limit", type=int, default=50, help="Max companies to enrich (default: 50)")
     enrich_p.add_argument("--glassdoor-only", action="store_true", help="Only apply Glassdoor ratings")
     enrich_p.add_argument("--funding-only", action="store_true", help="Only crawl funding")
+    enrich_p.add_argument("--perplexity", action="store_true", help="Deep enrichment via Perplexity AI")
+    enrich_p.add_argument("--force", action="store_true", help="Re-enrich all companies (not just missing data)")
 
     # rate
     rate_p = sub.add_parser("rate", help="Manually set a Glassdoor rating")
@@ -461,16 +544,21 @@ def main():
     init_db()
 
     if args.command == "enrich":
+        use_perplexity = getattr(args, "perplexity", False)
         glassdoor_only = getattr(args, "glassdoor_only", False)
         funding_only = getattr(args, "funding_only", False)
+        force = getattr(args, "force", False)
 
-        if not funding_only:
-            gd_count = apply_glassdoor_ratings()
-            print(f"\nGlassdoor: updated {gd_count} companies")
-
-        if not glassdoor_only:
-            fund_count = crawl_funding(limit=args.limit)
-            print(f"Funding: updated {fund_count} companies")
+        if use_perplexity:
+            px_count = enrich_perplexity(limit=args.limit, force=force)
+            print(f"\nPerplexity: enriched {px_count} companies")
+        else:
+            if not funding_only:
+                gd_count = apply_glassdoor_ratings()
+                print(f"\nGlassdoor: updated {gd_count} companies")
+            if not glassdoor_only:
+                fund_count = crawl_funding(limit=args.limit)
+                print(f"Funding: updated {fund_count} companies")
 
         scored = score_all_companies()
         print(f"Re-scored {scored} companies")

@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BRIGHT_DATA_API_KEY = os.getenv("BRIGHT_DATA_API_KEY", "")
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "./cre_intel.db")
 TARGET_MARKETS = [m.strip() for m in os.getenv("TARGET_MARKETS", "London,Manchester,Berlin,Amsterdam,Paris,Dublin,Edinburgh,Bristol,Cambridge,Oxford").split(",")]
 

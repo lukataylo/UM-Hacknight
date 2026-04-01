@@ -24,6 +24,13 @@ jobs:
           DATABASE_PATH: ./cre_intel.db
         run: python backend/pipeline_cli.py
 
+      - name: Enrich via Perplexity
+        if: ${{ secrets.PERPLEXITY_API_KEY != '' }}
+        env:
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          DATABASE_PATH: ./cre_intel.db
+        run: python manage.py enrich --perplexity --limit 20
+
       - name: Export data to JSON
         env:
           DATABASE_PATH: ./cre_intel.db
