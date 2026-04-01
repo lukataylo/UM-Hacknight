@@ -1373,5 +1373,160 @@ def seed_database():
     print(f"Seeded {len(companies_to_seed)} companies, {len(all_jobs)} job listings, scored {scored} companies.")
 
 
+def generate_new_companies(count: int = 10) -> int:
+    """Generate and insert new random companies into the database (for demo refresh)."""
+    industries = [
+        "FinTech", "Cybersecurity", "AI / ML", "SaaS", "HealthTech", "EdTech",
+        "PropTech", "CleanTech", "DevTools", "Data Analytics", "InsurTech",
+        "LegalTech", "HR Tech", "RegTech", "Payments", "Cloud Infrastructure",
+        "Robotics", "IoT", "Blockchain", "Gaming", "Logistics Tech",
+    ]
+    submarkets = [
+        "Shoreditch", "King's Cross", "City of London", "Canary Wharf",
+        "Farringdon", "Old Street", "Moorgate", "Clerkenwell", "Soho",
+        "Fitzrovia", "Paddington", "Holborn", "Southwark", "Victoria",
+        "Spitalfields", "Bermondsey", "Liverpool Street", "Mayfair",
+    ]
+    adjectives = [
+        "Nova", "Flux", "Helix", "Nexus", "Pulse", "Qubit", "Vertex", "Zenith",
+        "Astra", "Cipher", "Drift", "Echo", "Forge", "Glint", "Halo", "Ionic",
+        "Kite", "Lumen", "Nimbus", "Orbit", "Prism", "Rune", "Spark", "Tera",
+        "Vanta", "Wave", "Zeta", "Axon", "Byte", "Core", "Dash", "Edge",
+    ]
+    nouns = [
+        "Labs", "AI", "Systems", "Tech", "IO", "HQ", "Cloud", "Data",
+        "Works", "Hub", "Net", "Pay", "Flow", "Logic", "Mind", "Link",
+        "Stack", "Base", "Grid", "Scale", "Ops", "Dev", "API", "Bit",
+    ]
+    rounds = ["Seed", "Series A", "Series B", "Series C", "Series D"]
+    signals_pool = [
+        "Hiring Surge", "New London Office", "London Expansion", "UK Launch",
+        "Series Funded", "Revenue Growth", "Government Contracts",
+        "EMEA HQ", "Acquisition Target", "Pre-IPO",
+    ]
+    first_names = ["James","Sarah","Michael","Emma","David","Sophie","Tom","Lucy","Alex","Rachel","Chris","Hannah","Mark","Olivia","Ben","Charlotte","Dan","Emily","Will","Kate"]
+    last_names = ["Taylor","Williams","Brown","Davies","Wilson","Evans","Roberts","Clark","Mitchell","Lewis","Walker","Harris","Turner","Morgan","Phillips","Stewart","Collins","Murray","Bell","Grant"]
+    titles_pool = ["CEO","CTO","CFO","COO","VP EMEA","GM UK","Country Manager","Head of Expansion","Director of Operations","VP Sales"]
+
+    conn = get_db()
+    existing_names = {r[0] for r in conn.execute("SELECT name FROM companies").fetchall()}
+    conn.close()
+
+    new_companies = []
+    attempts = 0
+    while len(new_companies) < count and attempts < count * 5:
+        attempts += 1
+        adj = random.choice(adjectives)
+        noun = random.choice(nouns)
+        name = f"{adj}{noun}"
+        if name in existing_names:
+            continue
+        existing_names.add(name)
+
+        domain = f"{name.lower()}.com"
+        industry = random.choice(industries)
+        submarket = random.choice(submarkets)
+        emps = random.randint(30, 3000)
+        funding_m = random.choice([5, 10, 20, 50, 100, 200, 500])
+        rnd = random.choice(rounds)
+        hybrid = random.randint(40, 85)
+        sqft = max(1000, emps * random.randint(5, 15))
+        fn = random.choice(first_names)
+        ln = random.choice(last_names)
+        title = random.choice(titles_pool)
+        signal = random.choice(signals_pool)
+
+        trend_base = max(3, sqft // 800)
+        trend = [{"month": m, "count": max(1, int(trend_base * (0.5 + 0.1*j) + random.randint(-2,3)))} for j, m in enumerate(["Oct","Nov","Dec","Jan","Feb","Mar"])]
+        funding_date = f"202{random.choice([5,6])}-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
+        ev_date1 = f"2025-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
+        ev_date2 = f"2026-{random.randint(1,3):02d}-{random.randint(1,28):02d}"
+
+        company = {
+            "name": name, "domain": domain, "industry": industry,
+            "hq_city": "London", "hq_state": "England", "hq_country": "UK",
+            "submarket": submarket, "employee_count": emps,
+            "founded_year": random.randint(2005, 2023),
+            "funding_total_usd": funding_m * 1_000_000,
+            "latest_funding_round": rnd,
+            "latest_funding_date": funding_date,
+            "latest_funding_amount": funding_m * 1_000_000,
+            "revenue_range": "$10M-$50M" if funding_m < 100 else "$50M-$200M",
+            "glassdoor_rating": round(random.uniform(3.0, 4.5), 1),
+            "hybrid_percentage": hybrid,
+            "estimated_sqft": sqft,
+            "website": f"https://{domain}",
+            "description": f"{name} is a {industry.lower()} company expanding in London's {submarket} area.",
+            "contact_name": f"{fn} {ln}", "contact_title": title,
+            "contact_email": f"{fn[0].lower()}.{ln.lower()}@{domain}",
+            "contact_phone": f"+44 20 {random.randint(7000,7999)} {random.randint(1000,9999)}",
+            "signal_tags": json.dumps([signal]),
+            "ai_summary": f"{name} is scaling its London presence. {trend[-1]['count']} roles posted, seeking ~{sqft//1000}K SF in {submarket}.",
+            "ai_description": f"{name} is a {industry.lower()} company with {emps} employees. Recently raised ${funding_m}M ({rnd}) and is expanding its London operations in {submarket}.",
+            "hiring_trend": json.dumps(trend),
+            "evidence": json.dumps([
+                {"date": ev_date1, "event": "Funding", "description": f"Raised ${funding_m}M {rnd} round."},
+                {"date": ev_date2, "event": "Hiring", "description": f"{trend[-1]['count']} London roles posted across multiple functions."},
+            ]),
+        }
+        new_companies.append(company)
+
+    # Insert companies
+    for company in new_companies:
+        upsert_company(company)
+
+    # Generate job listings for the new companies
+    all_jobs = []
+    for company in new_companies:
+        trend = json.loads(company["hiring_trend"])
+        latest_count = trend[-1]["count"] if trend else 10
+        num_jobs = latest_count + random.randint(-3, 8)
+        num_jobs = max(3, num_jobs)
+
+        for _ in range(num_jobs):
+            days_ago = random.randint(0, 90)
+            date_posted = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+            is_hybrid = random.random() < (company.get("hybrid_percentage", 50) / 100)
+            job_title = random.choice(JOB_TITLES)
+            location = f"{company['hq_city']}, {company.get('hq_country', 'UK')}"
+            if is_hybrid:
+                job_type = random.choice(HYBRID_PHRASES)
+            else:
+                job_type = random.choice(["Remote", "On-site", "Full-time"])
+
+            all_jobs.append({
+                "company_name": company["name"],
+                "company_domain": company["domain"],
+                "title": job_title,
+                "location": location,
+                "job_type": job_type,
+                "date_posted": date_posted,
+                "source": random.choice(["linkedin", "indeed"]),
+                "is_hybrid": 1 if is_hybrid else 0,
+                "is_office": 1 if not is_hybrid and "Remote" not in job_type else 0,
+                "raw_data": "{}",
+            })
+
+    bulk_insert_jobs(all_jobs)
+
+    # Update job counts
+    conn = get_db()
+    for company in new_companies:
+        count_val = conn.execute(
+            "SELECT COUNT(*) FROM job_listings WHERE company_name = ?",
+            (company["name"],)
+        ).fetchone()[0]
+        conn.execute(
+            "UPDATE companies SET job_count_90d = ? WHERE name = ?",
+            (count_val, company["name"])
+        )
+    conn.commit()
+    conn.close()
+
+    # Score all companies
+    score_all_companies()
+    return len(new_companies)
+
+
 if __name__ == "__main__":
     seed_database()

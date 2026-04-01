@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SquareFootLoose - CRE Sales Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&family=Libre+Baskerville:ital@1&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0a0a0a;
+    color: #fff;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection { background: rgba(16, 185, 129, 0.3); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .font-serif { font-family: 'Libre Baskerville', serif; }
+
+  /* === AUTH GATE === */
+  .auth-gate {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: #0a0a0a; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+  }
+  .auth-gate.hidden { display: none; }
+  .auth-logo {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  }
+  .auth-logo-icon {
+    width: 48px; height: 48px; background: #10b981; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-logo-icon svg { width: 28px; height: 28px; }
+  .auth-logo-text { font-weight: 800; font-size: 28px; letter-spacing: -0.05em; text-transform: uppercase; }
+  .auth-subtitle { color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 16px; }
+  .auth-form { display: flex; gap: 8px; }
+  .auth-input {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 20px; font-size: 15px; width: 300px;
+    color: #fff; outline: none; font-family: inherit;
+  }
+  .auth-input:focus { border-color: rgba(16,185,129,0.5); box-shadow: 0 0 0 1px rgba(16,185,129,0.5); }
+  .auth-input::placeholder { color: rgba(255,255,255,0.3); }
+  .auth-submit {
+    padding: 12px 24px; background: #10b981; border: none; border-radius: 12px;
+    color: #000; font-weight: 700; font-size: 14px; cursor: pointer;
+    font-family: inherit; transition: background 0.2s;
+  }
+  .auth-submit:hover { background: #34d399; }
+  .auth-error { color: #f43f5e; font-size: 13px; height: 20px; }
+
+  /* === NAV === */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; height: 64px;
+    background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    z-index: 50; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-left { display: flex; align-items: center; gap: 32px; }
+  .logo { display: flex; align-items: center; gap: 8px; }
+  .logo-icon {
+    width: 32px; height: 32px; background: #10b981; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .logo-text { font-weight: 800; font-size: 20px; letter-spacing: -0.05em; text-transform: uppercase; }
+
+  /* Tab Switcher */
+  .tab-switcher { display: flex; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 12px; }
+  .tab-btn {
+    padding: 6px 16px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.4); background: transparent; transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn:hover { color: #fff; }
+  .tab-btn.active { background: #fff; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .tab-btn svg { width: 14px; height: 14px; }
+
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: rgba(255,255,255,0.2); transition: color 0.2s; }
+  .search-wrap:focus-within svg { color: #10b981; }
+  .search-input {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px; padding: 8px 16px 8px 36px; font-size: 13px; width: 256px;
+    color: #fff; outline: none; transition: all 0.2s; font-family: inherit;
+  }
+  .search-input:focus { border-color: rgba(16,185,129,0.5); box-shadow: 0 0 0 1px rgba(16,185,129,0.5); }
+  .search-input::placeholder { color: rgba(255,255,255,0.3); }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #14b8a6);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px; color: #000;
+  }
+
+  /* === MAIN === */
+  main { padding: 88px 24px 48px; max-width: 1280px; margin: 0 auto; transition: max-width 0.3s; }
+  main.wide { max-width: 100%; padding-left: 32px; padding-right: 32px; }
+
+  /* Header */
+  .header { margin-bottom: 48px; transition: all 0.3s; }
+  .header-top { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; }
+  .header-date { display: flex; align-items: center; gap: 8px; color: #10b981; margin-bottom: 4px; }
+  .header-date svg { width: 16px; height: 16px; }
+  .header-date span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; }
+  .header-title { font-size: 48px; font-weight: 700; letter-spacing: -0.05em; line-height: 1; }
+  .header-stats { display: flex; gap: 48px; }
+  .header-stat { text-align: right; }
+  .header-stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); margin-bottom: 4px; }
+  .header-stat-value { font-size: 30px; font-weight: 700; line-height: 1; font-family: 'JetBrains Mono', monospace; }
+  .text-emerald { color: #10b981; }
+
+  /* Filter Bar */
+  .filter-bar {
+    display: flex; align-items: center; gap: 16px; padding: 16px 0;
+    border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .filter-label { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.4); margin-right: 16px; }
+  .filter-label svg { width: 16px; height: 16px; }
+  .filter-label span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+  .filter-select {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #fff;
+    outline: none; font-family: inherit; cursor: pointer; transition: border-color 0.2s;
+  }
+  .filter-select:hover { border-color: rgba(255,255,255,0.2); }
+  .filter-select option { background: #1a1d27; }
+  .export-btn {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px; background: rgba(255,255,255,0.05); border: none;
+    border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    transition: background 0.2s; font-family: inherit;
+  }
+  .export-btn:hover { background: rgba(255,255,255,0.1); }
+  .export-btn svg { width: 14px; height: 14px; }
+  .pipeline-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 8px; color: #10b981; cursor: default;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: inherit;
+  }
+  .pipeline-btn svg { width: 14px; height: 14px; }
+
+  /* === CARDS GRID === */
+  .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  @media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px) { .cards-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #151619; border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px; overflow: hidden; transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.1); }
+  .card:hover .card-name { color: #34d399; }
+  .card-body { padding: 20px; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .card-company { display: flex; align-items: center; gap: 12px; }
+  .card-favicon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .card-favicon img { width: 32px; height: 32px; }
+  .card-name { font-size: 18px; font-weight: 600; line-height: 1.2; transition: color 0.2s; }
+  .card-location { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 4px; }
+  .card-location svg { width: 12px; height: 12px; }
+
+  /* Score Badge */
+  .score-badge {
+    width: 40px; height: 40px; border-radius: 12px; border: 2px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .score-high { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.05); }
+  .score-med { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.05); }
+  .score-low { border-color: #f43f5e; color: #f43f5e; background: rgba(244,63,94,0.05); }
+
+  /* Badges */
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .badge {
+    padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid;
+  }
+  .badge-success { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.2); }
+  .badge-warning { background: rgba(245,158,11,0.1); color: #f59e0b; border-color: rgba(245,158,11,0.2); }
+  .badge-danger { background: rgba(244,63,94,0.1); color: #f43f5e; border-color: rgba(244,63,94,0.2); }
+  .badge-default { background: rgba(100,116,139,0.1); color: #94a3b8; border-color: rgba(100,116,139,0.2); }
+
+  /* AI Summary */
+  .card-summary {
+    color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;
+    font-style: italic; font-family: 'Libre Baskerville', serif; margin-bottom: 24px;
+  }
+
+  /* Hiring Trend Chart */
+  .card-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .trend-chart { flex: 1; }
+  .trend-bars { display: flex; gap: 3px; align-items: flex-end; height: 48px; }
+  .trend-bar { flex: 1; border-radius: 2px 2px 0 0; background: #334155; min-width: 12px; transition: height 0.3s; }
+  .trend-bar.latest { background: #10b981; }
+  .trend-labels {
+    display: flex; justify-content: space-between; margin-top: 4px;
+    font-size: 8px; color: rgba(255,255,255,0.2); text-transform: uppercase;
+    letter-spacing: 0.1em; font-family: 'JetBrains Mono', monospace;
+  }
+  .why-btn {
+    display: flex; align-items: center; gap: 4px; background: none; border: none;
+    color: rgba(255,255,255,0.4); cursor: pointer; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; transition: color 0.2s;
+    font-family: inherit; white-space: nowrap;
+  }
+  .why-btn:hover { color: #fff; }
+  .why-btn svg { width: 12px; height: 12px; }
+
+  /* Expanded Section */
+  .card-expanded {
+    border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);
+    padding: 20px; display: none;
+  }
+  .card-expanded.open { display: block; }
+  .micro-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: rgba(255,255,255,0.3); margin-bottom: 8px;
+  }
+  .evidence-list { display: flex; flex-direction: column; gap: 12px; }
+  .evidence-item { display: flex; gap: 12px; }
+  .evidence-line { width: 3px; border-radius: 2px; background: rgba(16,185,129,0.2); flex-shrink: 0; }
+  .evidence-date { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: #10b981; }
+  .evidence-event { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.05em; }
+  .evidence-desc { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .view-profile-btn {
+    width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border: none;
+    border-radius: 8px; color: rgba(255,255,255,0.6); cursor: pointer;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    margin-top: 16px; transition: background 0.2s; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .view-profile-btn:hover { background: rgba(255,255,255,0.1); }
+
+  /* === TABLE VIEW === */
+  .table-container {
+    background: #151619; border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px; overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1400px; }
+  th {
+    padding: 10px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: rgba(255,255,255,0.3); background: rgba(0,0,0,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap;
+  }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; white-space: nowrap; }
+  tr.row-data { cursor: pointer; transition: background 0.15s; }
+  tr.row-data:hover { background: rgba(255,255,255,0.02); }
+  tr.row-data:hover .td-company-name { color: #34d399; }
+  tr.row-expanded { background: rgba(255,255,255,0.03); }
+  .td-company { display: flex; align-items: center; gap: 12px; }
+  .td-favicon { width: 20px; height: 20px; border-radius: 4px; }
+  .td-company-name { font-weight: 700; font-size: 14px; transition: color 0.2s; }
+  .td-domain { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
+  .td-score { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+  .td-location-city { font-size: 14px; color: rgba(255,255,255,0.7); }
+  .td-location-sub { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .td-hiring { display: flex; align-items: center; gap: 8px; }
+  .td-hiring svg { width: 12px; height: 12px; color: #10b981; }
+  .td-hiring span { font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+  .hybrid-bar { width: 64px; height: 6px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; }
+  .hybrid-fill { height: 100%; background: #10b981; border-radius: 99px; }
+  .hybrid-text { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+  .td-funding-amount { font-size: 14px; font-weight: 700; }
+  .td-funding-round { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .td-contact-name { font-size: 14px; }
+  .td-contact-title { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+  /* Expanded Row */
+  .expanded-content { padding: 32px; display: grid; grid-template-columns: 2fr 1fr; gap: 48px; }
+  .expanded-content .ai-report { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.6; max-width: 640px; }
+  .expanded-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 24px; }
+  .signal-tags-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .decision-maker {
+    background: rgba(255,255,255,0.05); padding: 24px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .dm-header { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .dm-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dm-avatar svg { width: 20px; height: 20px; color: rgba(255,255,255,0.4); }
+  .dm-name { font-size: 14px; font-weight: 700; }
+  .dm-title { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.1em; }
+  .dm-contacts { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .dm-contact { display: flex; align-items: center; gap: 12px; font-size: 12px; color: rgba(255,255,255,0.6); }
+  .dm-contact a { color: rgba(255,255,255,0.6); text-decoration: none; transition: color 0.2s; }
+  .dm-contact a:hover { color: #34d399; }
+  .dm-contact svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .crm-btn {
+    width: 100%; padding: 8px; background: #10b981; border: none; border-radius: 8px;
+    color: #000; cursor: pointer; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-top: 16px;
+    transition: background 0.2s; font-family: inherit;
+  }
+  .crm-btn:hover { background: #34d399; }
+
+  /* Table Footer */
+  .table-footer {
+    padding: 16px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-footer-text { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+  .table-footer-btns { display: flex; gap: 8px; }
+  .page-btn {
+    padding: 4px 12px; background: rgba(255,255,255,0.05); border: none;
+    border-radius: 4px; color: rgba(255,255,255,0.4); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .page-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: #fff; }
+  .page-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+  .page-btn.active { background: #fff; color: #000; }
+
+  /* === FOOTER === */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.05); padding: 32px 24px; text-align: center;
+  }
+  .footer-stats {
+    display: flex; align-items: center; justify-content: center; gap: 32px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.3em; color: rgba(255,255,255,0.2);
+  }
+  .footer-stat { display: flex; align-items: center; gap: 8px; }
+  .footer-stat svg { width: 12px; height: 12px; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 96px 0; grid-column: 1 / -1; }
+  .empty-state svg { width: 48px; height: 48px; color: rgba(255,255,255,0.2); margin: 0 auto 16px; }
+  .empty-state h3 { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.4); }
+  .empty-state a {
+    display: inline-block; margin-top: 16px; color: #10b981;
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; cursor: pointer; text-decoration: none;
+  }
+  .empty-state a:hover { text-decoration: underline; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 80px 0; }
+  .spinner {
+    display: inline-block; width: 24px; height: 24px;
+    border: 2px solid rgba(255,255,255,0.1); border-top-color: #10b981;
+    border-radius: 50%; animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Pipeline toast */
+  .pipeline-toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 60;
+    background: #151619; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 20px; font-size: 13px;
+    display: none; align-items: center; gap: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .pipeline-toast.show { display: flex; }
+
+  .hidden { display: none !important; }
+
+  /* Bloomberg-style news ticker */
+  .ticker-wrap {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 45;
+    height: 32px; background: #0d0f12; border-bottom: 1px solid rgba(255,255,255,0.05);
+    overflow: hidden; display: flex; align-items: center;
+  }
+  .ticker-label {
+    flex-shrink: 0; padding: 0 16px; height: 100%; display: flex; align-items: center;
+    background: #10b981; color: #000; font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.15em; gap: 6px; z-index: 1;
+  }
+  .ticker-label svg { width: 12px; height: 12px; }
+  .ticker-track { flex: 1; overflow: hidden; position: relative; mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent); }
+  .ticker-content {
+    display: flex; align-items: center; gap: 0;
+    white-space: nowrap; animation: ticker-scroll 90s linear infinite;
+    font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  }
+  .ticker-content:hover { animation-play-state: paused; }
+  .ticker-item { display: flex; align-items: center; gap: 8px; padding: 0 24px; color: rgba(255,255,255,0.6); }
+  .ticker-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .ticker-dot.green { background: #10b981; }
+  .ticker-dot.amber { background: #f59e0b; }
+  .ticker-dot.red { background: #f43f5e; }
+  .ticker-dot.blue { background: #3b82f6; }
+  .ticker-company { color: #fff; font-weight: 700; }
+  .ticker-sep { color: rgba(255,255,255,0.1); font-size: 14px; }
+  @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+</style>
+</head>
+<body>
+
+<!-- AUTH GATE -->
+<div class="auth-gate" id="authGate">
+  <div class="auth-logo">
+    <div class="auth-logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </div>
+    <span class="auth-logo-text">SquareFootLoose</span>
+  </div>
+  <div class="auth-subtitle">Enter password to access the dashboard</div>
+  <form class="auth-form" onsubmit="checkPassword(event)">
+    <input type="password" class="auth-input" id="authPassword" placeholder="Password" autofocus>
+    <button type="submit" class="auth-submit">Enter</button>
+  </form>
+  <div class="auth-error" id="authError"></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <span class="logo-text">SquareFootLoose</span>
+    </div>
+    <div class="tab-switcher">
+      <button class="tab-btn active" id="tab-brief" onclick="switchView('brief')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Morning Brief
+      </button>
+      <button class="tab-btn" id="tab-spreadsheet" onclick="switchView('spreadsheet')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
+        Spreadsheet
+      </button>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search companies, cities, industries..." oninput="debounceSearch()">
+    </div>
+    <div class="avatar">SFL</div>
+  </div>
+</nav>
+
+<!-- BLOOMBERG-STYLE NEWS TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-label">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    LIVE
+  </div>
+  <div class="ticker-track">
+    <div class="ticker-content" id="tickerContent"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main style="padding-top:120px">
+  <header class="header">
+    <div class="header-top">
+      <div>
+        <div class="header-date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="currentDate"></span>
+        </div>
+        <h1 class="header-title" id="pageTitle">Daily Intelligence</h1>
+      </div>
+      <div class="header-stats">
+        <div class="header-stat">
+          <div class="header-stat-label">Total Prospects</div>
+          <div class="header-stat-value" id="statTotal">--</div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-label">Avg. Intel Score</div>
+          <div class="header-stat-value text-emerald" id="statAvg">--</div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-label">High Priority</div>
+          <div class="header-stat-value text-emerald" id="statHigh">--</div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <span>Filters</span>
+      </div>
+      <select class="filter-select" id="cityFilter" onchange="applyFilters()">
+        <option value="">All Cities</option>
+      </select>
+      <select class="filter-select" id="signalFilter" onchange="applyFilters()">
+        <option value="">All Signals</option>
+        <option value="Hiring">Hiring Surge</option>
+        <option value="Funded">Recently Funded</option>
+        <option value="Office">New Office</option>
+        <option value="Downsizing">Downsizing Risk</option>
+      </select>
+      <select class="filter-select" id="industryFilter" onchange="applyFilters()">
+        <option value="">All Industries</option>
+      </select>
+      <select class="filter-select" id="sqftFilter" onchange="applyFilters()">
+        <option value="">All Sizes (SF)</option>
+        <option value="0-3000">Under 3,000 SF</option>
+        <option value="3000-8000">3,000 - 8,000 SF</option>
+        <option value="8000-15000">8,000 - 15,000 SF</option>
+        <option value="15000-30000">15,000 - 30,000 SF</option>
+        <option value="30000-999999">30,000+ SF</option>
+      </select>
+      <div class="pipeline-btn" id="lastUpdatedBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span id="lastUpdatedText">Loading...</span>
+      </div>
+      <button class="export-btn" onclick="exportCSV()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+    </div>
+  </header>
+
+  <div id="content">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-stats">
+    <div class="footer-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg>
+      <span>Market Coverage: 42 Cities</span>
+    </div>
+    <div class="footer-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span>Real-time Signals Active</span>
+    </div>
+    <div class="footer-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>1.2M Companies Tracked</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// === PASSWORD GATE ===
+const PASSWORD_HASH = 'd595aedd387c019cb77f60422288c56c8322d57924d9c7fec089e403689713f1';
+
+async function checkPassword(e) {
+  e.preventDefault();
+  const pw = document.getElementById('authPassword').value;
+  const encoded = new TextEncoder().encode(pw);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  if (hashHex === PASSWORD_HASH) {
+    sessionStorage.setItem('sfl_auth', '1');
+    document.getElementById('authGate').classList.add('hidden');
+    initApp();
+  } else {
+    document.getElementById('authError').textContent = 'Incorrect password';
+    document.getElementById('authPassword').value = '';
+  }
+}
+
+// === APP STATE ===
+let allData = [];
+let currentView = 'brief';
+let currentPage = 1;
+let allCompanies = [];
+let expandedCards = {};
+let expandedRow = null;
+let searchTimeout = null;
+let totalPages = 1;
+let totalCompanies = 0;
+const PER_PAGE = 50;
+
+// SVG icon helpers
+const icons = {
+  mapPin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  chevUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
+  external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:48px;height:48px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+};
+
+// === INIT ===
+document.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('sfl_auth') === '1') {
+    document.getElementById('authGate').classList.add('hidden');
+    initApp();
+  }
+});
+
+async function initApp() {
+  // Set date
+  const d = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('currentDate').textContent = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+
+  // Load data
+  try {
+    const [companiesRes, metaRes] = await Promise.all([
+      fetch('data/companies.json'),
+      fetch('data/meta.json'),
+    ]);
+    allData = await companiesRes.json();
+    const meta = await metaRes.json();
+
+    // Show last updated
+    const updatedDate = new Date(meta.last_updated);
+    document.getElementById('lastUpdatedText').textContent = `Updated ${updatedDate.toLocaleDateString()}`;
+
+    // Populate filters
+    populateFilters();
+
+    // Compute and show stats
+    loadStats();
+
+    // Show companies
+    applyFilters();
+
+    // Load ticker
+    loadTicker();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="loading">Error loading data: ${e.message}</div>`;
+  }
+}
+
+function populateFilters() {
+  const cities = {};
+  const industries = {};
+  allData.forEach(c => {
+    if (c.hq_city) cities[c.hq_city] = (cities[c.hq_city] || 0) + 1;
+    if (c.industry) industries[c.industry] = (industries[c.industry] || 0) + 1;
+  });
+
+  const citySelect = document.getElementById('cityFilter');
+  Object.entries(cities).sort((a,b) => b[1] - a[1]).forEach(([city]) => {
+    const o = document.createElement('option');
+    o.value = city; o.textContent = city;
+    citySelect.appendChild(o);
+  });
+
+  const indSelect = document.getElementById('industryFilter');
+  Object.entries(industries).sort((a,b) => b[1] - a[1]).forEach(([ind]) => {
+    const o = document.createElement('option');
+    o.value = ind; o.textContent = ind;
+    indSelect.appendChild(o);
+  });
+}
+
+function loadStats() {
+  const scored = allData.filter(c => c.score > 0);
+  document.getElementById('statTotal').textContent = allData.length;
+  document.getElementById('statAvg').textContent = scored.length ? Math.round(scored.reduce((s,c) => s + c.score, 0) / scored.length) : 0;
+  document.getElementById('statHigh').textContent = allData.filter(c => c.score >= 70).length;
+}
+
+// === FILTERING / SORTING / PAGINATION ===
+function getFilteredData() {
+  let result = [...allData];
+  const search = (document.getElementById('searchInput').value || '').toLowerCase();
+  const city = document.getElementById('cityFilter').value;
+  const signal = document.getElementById('signalFilter').value;
+  const industry = document.getElementById('industryFilter').value;
+  const sqft = document.getElementById('sqftFilter').value;
+
+  if (search) {
+    result = result.filter(c =>
+      (c.name || '').toLowerCase().includes(search) ||
+      (c.domain || '').toLowerCase().includes(search) ||
+      (c.description || '').toLowerCase().includes(search)
+    );
+  }
+  if (city) {
+    result = result.filter(c =>
+      (c.hq_city || '').toLowerCase().includes(city.toLowerCase()) ||
+      (c.hq_state || '').toLowerCase().includes(city.toLowerCase())
+    );
+  }
+  if (industry) {
+    result = result.filter(c => (c.industry || '').toLowerCase().includes(industry.toLowerCase()));
+  }
+  if (signal) {
+    result = result.filter(c =>
+      c.signal_tags && c.signal_tags.some(t => t.includes(signal))
+    );
+  }
+  if (sqft) {
+    const [min, max] = sqft.split('-').map(Number);
+    result = result.filter(c => {
+      const sf = c.estimated_sqft || 0;
+      return sf >= min && sf <= max;
+    });
+  }
+
+  // Sort by score descending
+  result.sort((a, b) => (b.score || 0) - (a.score || 0));
+  return result;
+}
+
+function applyFilters() {
+  const filtered = getFilteredData();
+  totalCompanies = filtered.length;
+  totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (currentPage > totalPages) currentPage = 1;
+  allCompanies = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+  renderView();
+}
+
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => { currentPage = 1; applyFilters(); }, 300);
+}
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('tab-brief').classList.toggle('active', view === 'brief');
+  document.getElementById('tab-spreadsheet').classList.toggle('active', view === 'spreadsheet');
+  document.getElementById('pageTitle').textContent = view === 'brief' ? 'Daily Intelligence' : 'Prospect Database';
+  document.querySelector('main').classList.toggle('wide', view === 'spreadsheet');
+  expandedRow = null;
+  renderView();
+}
+
+function renderView() {
+  if (currentView === 'brief') renderCards();
+  else renderTable();
+}
+
+// === HELPERS ===
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function scoreClass(s) { return s >= 80 ? 'score-high' : s >= 60 ? 'score-med' : 'score-low'; }
+function scoreColor(s) { return s >= 80 ? '#10b981' : s >= 60 ? '#f59e0b' : '#f43f5e'; }
+
+function formatMoney(v) {
+  if (!v) return 'N/A';
+  if (v >= 1e9) return `$${(v/1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v/1e6).toFixed(0)}M`;
+  return `$${v}`;
+}
+
+function badgeVariant(tag) {
+  if (!tag) return 'badge-default';
+  const t = tag.toLowerCase();
+  if (t.includes('funded') || t.includes('funding') || t.includes('series') || t.includes('hiring') || t.includes('surge')) return 'badge-success';
+  if (t.includes('risk') || t.includes('downsizing') || t.includes('remote')) return 'badge-danger';
+  if (t.includes('mandate') || t.includes('pre-ipo')) return 'badge-warning';
+  return 'badge-default';
+}
+
+function renderTrendBars(trend) {
+  if (!trend || !trend.length) return '';
+  const max = Math.max(...trend.map(t => t.count), 1);
+  const bars = trend.map((t, i) => {
+    const h = Math.max((t.count / max) * 100, 5);
+    const cls = i === trend.length - 1 ? 'trend-bar latest' : 'trend-bar';
+    return `<div class="${cls}" style="height:${h}%" title="${t.month}: ${t.count}"></div>`;
+  }).join('');
+  const first = trend[0]?.month || '';
+  const last = trend[trend.length-1]?.month || '';
+  return `
+    <div class="trend-bars">${bars}</div>
+    <div class="trend-labels"><span>${esc(first)}</span><span>Hiring Trend</span><span>${esc(last)}</span></div>
+  `;
+}
+
+function toggleCard(id) {
+  expandedCards[id] = !expandedCards[id];
+  const el = document.getElementById(`card-expand-${id}`);
+  if (el) el.classList.toggle('open', expandedCards[id]);
+  const btn = document.getElementById(`card-btn-${id}`);
+  if (btn) btn.innerHTML = expandedCards[id]
+    ? `Less ${icons.chevUp}`
+    : `Why now? ${icons.chevDown}`;
+}
+
+// === CARD VIEW ===
+function renderCards() {
+  const content = document.getElementById('content');
+  if (!allCompanies.length) {
+    content.innerHTML = `<div class="cards-grid"><div class="empty-state">${icons.search}<h3>No prospects match your filters</h3><a onclick="clearFilters()">Clear all filters</a></div></div>`;
+    return;
+  }
+  content.innerHTML = `<div class="cards-grid">${allCompanies.map(c => {
+    const tags = (c.signal_tags || []);
+    const trend = c.hiring_trend || [];
+    const evidence = c.evidence || [];
+    return `
+    <div class="card">
+      <div class="card-body">
+        <div class="card-top">
+          <div class="card-company">
+            <div class="card-favicon">
+              <img src="https://www.google.com/s2/favicons?domain=${esc(c.domain)}&sz=64" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+            </div>
+            <div>
+              <div class="card-name">${esc(c.name)}</div>
+              <div class="card-location">${icons.mapPin} ${esc(c.hq_city)}${c.hq_state ? ', ' + esc(c.hq_state) : ''}${c.submarket ? ' &middot; ' + esc(c.submarket) : ''}</div>
+            </div>
+          </div>
+          <div class="score-badge ${scoreClass(c.score)}">${Math.round(c.score)}</div>
+        </div>
+        <div class="badges">${tags.map(t => `<span class="badge ${badgeVariant(t)}">${esc(t)}</span>`).join('')}</div>
+        <div class="card-summary">"${esc(c.ai_summary || c.description || '')}"</div>
+        <div class="card-bottom">
+          <div class="trend-chart">${renderTrendBars(trend)}</div>
+          <button class="why-btn" id="card-btn-${c.id}" onclick="toggleCard(${c.id})">Why now? ${icons.chevDown}</button>
+        </div>
+      </div>
+      <div class="card-expanded ${expandedCards[c.id] ? 'open' : ''}" id="card-expand-${c.id}">
+        <div class="micro-label">Evidence & Signals</div>
+        <div class="evidence-list">
+          ${evidence.map(ev => `
+            <div class="evidence-item">
+              <div class="evidence-line"></div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="evidence-date">${esc(ev.date)}</span>
+                  <span class="evidence-event">${esc(ev.event)}</span>
+                </div>
+                <div class="evidence-desc">${esc(ev.description)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="view-profile-btn" onclick="window.open('${esc(c.website||'')}','_blank')">View Full Profile ${icons.external}</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// === TABLE VIEW ===
+function renderMiniTrend(trend) {
+  if (!trend || !trend.length) return '<span style="color:rgba(255,255,255,0.2)">-</span>';
+  const max = Math.max(...trend.map(t => t.count), 1);
+  const first = trend[0].count;
+  const last = trend[trend.length - 1].count;
+  const pctChange = first > 0 ? Math.round(((last - first) / first) * 100) : 0;
+  const isUp = pctChange > 0;
+  const color = isUp ? '#10b981' : pctChange < 0 ? '#f43f5e' : 'rgba(255,255,255,0.4)';
+  const arrow = isUp ? '\u2191' : pctChange < 0 ? '\u2193' : '\u2192';
+  const bars = trend.map((t, i) => {
+    const h = Math.max((t.count / max) * 20, 2);
+    const bg = i === trend.length - 1 ? '#10b981' : '#334155';
+    return `<div style="width:4px;height:${h}px;background:${bg};border-radius:1px"></div>`;
+  }).join('');
+  return `<div style="display:flex;align-items:flex-end;gap:1px;height:20px">${bars}</div><div style="font-size:10px;color:${color};font-weight:700;margin-top:2px">${arrow}${Math.abs(pctChange)}%</div>`;
+}
+
+function toggleRow(id) {
+  expandedRow = expandedRow === id ? null : id;
+  renderTable();
+}
+
+function renderTable() {
+  const content = document.getElementById('content');
+  if (!allCompanies.length) {
+    content.innerHTML = `<div class="empty-state">${icons.search}<h3>No prospects match your filters</h3><a onclick="clearFilters()">Clear all filters</a></div>`;
+    return;
+  }
+  content.innerHTML = `<div class="table-container"><div class="table-scroll"><table>
+    <thead><tr>
+      <th>Company</th><th>Score</th><th>Location</th><th>Industry</th>
+      <th>Employees</th><th>Hiring</th><th>Trend</th><th>Hybrid %</th><th>Est. SF</th>
+      <th>Funding</th><th>Revenue</th><th>Founded</th><th>Glassdoor</th>
+      <th>Contact</th><th>Email</th><th>Phone</th><th>Links</th>
+    </tr></thead>
+    <tbody>${allCompanies.map(c => {
+      const tags = c.signal_tags || [];
+      const evidence = c.evidence || [];
+      const isExpanded = expandedRow === c.id;
+      return `
+      <tr class="row-data ${isExpanded ? 'row-expanded' : ''}" onclick="toggleRow(${c.id})">
+        <td>
+          <div class="td-company">
+            <img src="https://www.google.com/s2/favicons?domain=${esc(c.domain)}&sz=32" alt="" class="td-favicon" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+            <div>
+              <div class="td-company-name">${esc(c.name)}</div>
+              <div class="td-domain">${esc(c.domain)}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="td-score" style="color:${scoreColor(c.score)}">${Math.round(c.score)}</span></td>
+        <td>
+          <div class="td-location-city">${esc(c.hq_city)}${c.hq_state ? ', ' + esc(c.hq_state) : ''}</div>
+          <div class="td-location-sub">${esc(c.submarket || '')}</div>
+        </td>
+        <td><span class="badge badge-default" style="background:rgba(255,255,255,0.05)">${esc(c.industry)}</span></td>
+        <td><span class="font-mono" style="font-size:14px">${c.employee_count ? c.employee_count.toLocaleString() : '-'}</span></td>
+        <td>
+          <div class="td-hiring">${icons.trending}<span>${c.job_count_90d || 0}</span></div>
+        </td>
+        <td>${renderMiniTrend(c.hiring_trend)}</td>
+        <td>
+          <div class="hybrid-bar"><div class="hybrid-fill" style="width:${c.hybrid_percentage || 0}%"></div></div>
+          <div class="hybrid-text">${c.hybrid_percentage || 0}%</div>
+        </td>
+        <td>
+          <span class="font-mono" style="font-size:13px;font-weight:700">${c.estimated_sqft ? c.estimated_sqft.toLocaleString() : '-'}</span>
+        </td>
+        <td>
+          <div class="td-funding-amount">${formatMoney(c.latest_funding_amount || c.funding_total_usd)}</div>
+          <div class="td-funding-round">${esc(c.latest_funding_round || '')}</div>
+        </td>
+        <td><span style="font-size:13px;color:rgba(255,255,255,0.7)">${esc(c.revenue_range || '-')}</span></td>
+        <td><span class="font-mono" style="font-size:13px">${c.founded_year || '-'}</span></td>
+        <td>${c.glassdoor_rating ? `<span style="font-size:13px;color:${c.glassdoor_rating >= 4.0 ? '#10b981' : c.glassdoor_rating >= 3.5 ? '#f59e0b' : '#f43f5e'}">${c.glassdoor_rating}/5</span>` : '<span style="color:rgba(255,255,255,0.2)">-</span>'}</td>
+        <td>
+          <div class="td-contact-name">${esc(c.contact_name || '')}</div>
+          <div class="td-contact-title">${esc(c.contact_title || '')}</div>
+        </td>
+        <td>
+          ${c.contact_email ? `<a href="mailto:${esc(c.contact_email)}" style="color:#34d399;text-decoration:none;font-size:12px" onclick="event.stopPropagation()">${esc(c.contact_email)}</a>` : '<span style="color:rgba(255,255,255,0.2);font-size:11px">-</span>'}
+        </td>
+        <td style="font-size:12px">
+          ${c.contact_phone ? `<span style="color:rgba(255,255,255,0.6)">${esc(c.contact_phone)}</span>` : '<span style="color:rgba(255,255,255,0.2)">-</span>'}
+        </td>
+        <td style="white-space:nowrap">
+          ${c.linkedin_url ? `<a href="${esc(c.linkedin_url)}" target="_blank" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.4);text-decoration:none;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-right:8px" title="LinkedIn">LI</a>` : ''}${c.website ? `<a href="${esc(c.website)}" target="_blank" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.4);text-decoration:none;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em" title="Website">WEB</a>` : ''}
+        </td>
+      </tr>
+      ${isExpanded ? `<tr><td colspan="17" style="padding:0;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.4)">
+        <div class="expanded-content">
+          <div>
+            <div class="micro-label">AI Intelligence Report</div>
+            <div class="ai-report">${esc(c.ai_description || c.description || '')}</div>
+            <div class="expanded-cols">
+              <div>
+                <div class="micro-label" style="margin-top:16px">Evidence Timeline</div>
+                <div class="evidence-list">
+                  ${evidence.map(ev => `
+                    <div class="evidence-item">
+                      <div class="evidence-line"></div>
+                      <div>
+                        <div class="evidence-date">${esc(ev.date)}</div>
+                        <div class="evidence-event">${esc(ev.event)}</div>
+                        <div class="evidence-desc">${esc(ev.description)}</div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <div class="micro-label" style="margin-top:16px">Signal Tags</div>
+                <div class="signal-tags-wrap">
+                  ${tags.map(t => `<span class="badge badge-default" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6)">${esc(t)}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="decision-maker">
+            <div class="micro-label">Decision Maker</div>
+            <div class="dm-header">
+              <div class="dm-avatar">${icons.user}</div>
+              <div>
+                <div class="dm-name">${esc(c.contact_name || 'Not available')}</div>
+                <div class="dm-title">${esc(c.contact_title || '')}</div>
+              </div>
+            </div>
+            <div class="dm-contacts">
+              ${c.contact_email ? `<div class="dm-contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a></div>` : ''}
+              ${c.contact_phone ? `<div class="dm-contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${esc(c.contact_phone)}</div>` : ''}
+            </div>
+            <button class="crm-btn">Push to CRM</button>
+          </div>
+        </div>
+      </td></tr>` : ''}`;
+    }).join('')}</tbody>
+  </table></div>
+  <div class="table-footer">
+    <div class="table-footer-text">Showing ${allCompanies.length} of ${totalCompanies} prospects &middot; Page ${currentPage} of ${totalPages}</div>
+    <div class="table-footer-btns">
+      <button class="page-btn" onclick="event.stopPropagation();goPage(currentPage-1)" ${currentPage<=1?'disabled':''}>Prev</button>
+      ${Array.from({length: totalPages}, (_, i) => i+1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1).map(p =>
+        `<button class="page-btn ${p===currentPage?'active':''}" onclick="event.stopPropagation();goPage(${p})">${p}</button>`
+      ).join('')}
+      <button class="page-btn" onclick="event.stopPropagation();goPage(currentPage+1)" ${currentPage>=totalPages?'disabled':''}>Next</button>
+    </div>
+  </div></div>`;
+}
+
+function goPage(p) {
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  applyFilters();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('cityFilter').value = '';
+  document.getElementById('signalFilter').value = '';
+  document.getElementById('industryFilter').value = '';
+  document.getElementById('sqftFilter').value = '';
+  currentPage = 1;
+  applyFilters();
+}
+
+// === CSV EXPORT ===
+function exportCSV() {
+  const filtered = getFilteredData();
+  const headers = [
+    "Rank", "Company", "Industry", "City", "State", "Employees",
+    "Funding Total ($)", "Latest Round", "Score",
+    "Contact Name", "Contact Title", "Contact Email", "Contact Phone",
+    "Website", "Description"
+  ];
+  const rows = filtered.map((c, i) => [
+    i + 1, c.name, c.industry, c.hq_city, c.hq_state, c.employee_count,
+    c.funding_total_usd, c.latest_funding_round, c.score,
+    c.contact_name, c.contact_title, c.contact_email, c.contact_phone,
+    c.website, c.description
+  ]);
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cre_prospects_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// === TICKER ===
+function loadTicker() {
+  const top = allData.filter(c => c.score >= 40).slice(0, 30);
+  const items = [];
+  top.forEach(c => {
+    const evidence = c.evidence || [];
+    if (!evidence.length) return;
+    const ev = evidence[evidence.length - 1];
+    const dotClass = c.score >= 80 ? 'green' : c.score >= 60 ? 'amber' : c.score >= 40 ? 'blue' : 'red';
+    items.push(`<span class="ticker-item"><span class="ticker-dot ${dotClass}"></span><span class="ticker-company">${esc(c.name)}</span>${esc(ev.description)}</span><span class="ticker-sep">|</span>`);
+  });
+  const html = items.join('') + items.join('');
+  document.getElementById('tickerContent').innerHTML = html;
+}
+</script>
+</body>
+</html>

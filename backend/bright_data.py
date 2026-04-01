@@ -2,6 +2,7 @@ import httpx
 import asyncio
 import json
 import logging
+import random
 from datetime import datetime
 from backend.config import (
     BRIGHT_DATA_API_KEY, TARGET_MARKETS,
@@ -114,17 +115,34 @@ def _extract_domain(url: str) -> str:
     return url.split("/")[0].split("?")[0]
 
 
+DISCOVERY_KEYWORDS = [
+    "startup", "hiring", "hybrid office", "series A", "series B", "series C",
+    "funded", "fintech", "AI", "machine learning", "SaaS", "cybersecurity",
+    "healthtech", "proptech", "edtech", "cleantech", "devops", "cloud",
+    "data engineer", "software engineer", "product manager", "expansion",
+    "new office", "growing team", "scale-up", "opening office",
+    "head of", "VP", "country manager", "EMEA", "engineering manager",
+    "regtech", "insurtech", "legaltech", "deeptech", "robotics",
+    "infrastructure", "payments", "blockchain", "biotech", "medtech",
+]
+
+
 async def collect_job_listings(records_limit: int = 200) -> int:
-    """Collect job listings from LinkedIn and Indeed."""
+    """Collect job listings from LinkedIn and Indeed with varied discovery keywords."""
     total_inserted = 0
+
+    # Pick a random subset of markets and keywords each run to discover new companies
+    markets = random.sample(TARGET_MARKETS, min(5, len(TARGET_MARKETS)))
+    keywords = random.sample(DISCOVERY_KEYWORDS, min(6, len(DISCOVERY_KEYWORDS)))
 
     for dataset_id, source in [
         (DATASET_LINKEDIN_JOBS, "linkedin"),
         (DATASET_INDEED_JOBS, "indeed"),
     ]:
         try:
-            # Build location filters for target markets
-            filters = [{"location": market} for market in TARGET_MARKETS[:5]]
+            # Combine location filters with keyword searches to find new companies
+            filters = [{"location": market} for market in markets]
+            filters.extend([{"keyword": kw} for kw in keywords[:3]])
             records = await collect_dataset(dataset_id, records_limit=records_limit, filters=filters)
 
             normalized = []
@@ -143,9 +161,19 @@ async def collect_job_listings(records_limit: int = 200) -> int:
                     "raw_data": json.dumps(r),
                 })
 
-            db.bulk_insert_jobs(normalized)
-            total_inserted += len(normalized)
-            logger.info(f"Inserted {len(normalized)} {source} job listings")
+            inserted = db.bulk_insert_jobs(normalized)
+            total_inserted += inserted
+
+            # Ensure every company from new jobs exists in the companies table
+            seen_companies = set()
+            for job in normalized:
+                company_name = job.get("company_name", "")
+                if company_name and company_name not in seen_companies:
+                    seen_companies.add(company_name)
+                    company_domain = job.get("company_domain", "")
+                    db.upsert_company({"name": company_name, "domain": company_domain or None})
+
+            logger.info(f"Collected {len(normalized)} {source} listings, {inserted} new")
 
         except Exception as e:
             logger.error(f"Error collecting {source} jobs: {e}")
@@ -154,30 +182,37 @@ async def collect_job_listings(records_limit: int = 200) -> int:
 
 
 async def collect_company_intelligence(records_limit: int = 100) -> int:
-    """Collect company data from Crunchbase, LinkedIn, ZoomInfo, Glassdoor."""
-    # Get unique company names from job listings
+    """Collect company data from Crunchbase, LinkedIn, ZoomInfo, Glassdoor.
+    Enriches known companies AND discovers new ones via keyword searches."""
+    total_upserted = 0
+
+    # --- Part 1: Enrich companies we already know from job listings ---
     conn = db.get_db()
     companies_raw = conn.execute(
-        "SELECT DISTINCT company_name FROM job_listings WHERE company_name != '' LIMIT 200"
+        "SELECT DISTINCT company_name FROM job_listings WHERE company_name != '' ORDER BY created_at DESC LIMIT 200"
     ).fetchall()
     conn.close()
     company_names = [r["company_name"] for r in companies_raw]
 
-    if not company_names:
-        logger.warning("No company names found in job listings")
-        return 0
-
-    total_upserted = 0
-
-    # Collect from each source
-    datasets = [
+    enrichment_datasets = [
         (DATASET_CRUNCHBASE, "crunchbase"),
         (DATASET_LINKEDIN_COMPANIES, "linkedin"),
     ]
 
-    for dataset_id, source in datasets:
+    for dataset_id, source in enrichment_datasets:
         try:
-            filters = [{"company_name": name} for name in company_names[:50]]
+            # Enrich the newest companies we don't have full data for yet
+            conn = db.get_db()
+            sparse_companies = conn.execute(
+                "SELECT name FROM companies WHERE industry IS NULL OR employee_count IS NULL ORDER BY last_updated ASC LIMIT 50"
+            ).fetchall()
+            conn.close()
+            enrich_names = [r["name"] for r in sparse_companies]
+
+            if not enrich_names:
+                enrich_names = company_names[:50]
+
+            filters = [{"company_name": name} for name in enrich_names]
             records = await collect_dataset(dataset_id, records_limit=records_limit, filters=filters)
 
             for r in records:
@@ -186,16 +221,51 @@ async def collect_company_intelligence(records_limit: int = 100) -> int:
                     db.upsert_company(company_data)
                     total_upserted += 1
 
-            logger.info(f"Upserted {len(records)} companies from {source}")
+            logger.info(f"Enriched {len(records)} companies from {source}")
 
         except Exception as e:
-            logger.error(f"Error collecting from {source}: {e}")
+            logger.error(f"Error enriching from {source}: {e}")
 
-    # Ensure all companies from job listings exist in companies table
+    # --- Part 2: Discover NEW companies via keyword/industry searches ---
+    discovery_industries = random.sample([
+        "fintech", "artificial intelligence", "cybersecurity", "saas",
+        "healthtech", "proptech", "edtech", "cleantech", "regtech",
+        "insurtech", "legaltech", "devtools", "data analytics",
+        "cloud infrastructure", "payments", "biotech", "robotics",
+    ], 4)
+
+    discovery_locations = random.sample(TARGET_MARKETS, min(3, len(TARGET_MARKETS)))
+
+    for dataset_id, source in [(DATASET_CRUNCHBASE, "crunchbase"), (DATASET_LINKEDIN_COMPANIES, "linkedin")]:
+        try:
+            # Search by industry + location to find companies not yet in our DB
+            filters = []
+            for industry in discovery_industries:
+                for location in discovery_locations:
+                    filters.append({"industry": industry, "location": location})
+
+            records = await collect_dataset(dataset_id, records_limit=50, filters=filters)
+
+            new_count = 0
+            for r in records:
+                company_data = _normalize_company(r, source)
+                if company_data.get("name"):
+                    db.upsert_company(company_data)
+                    new_count += 1
+
+            total_upserted += new_count
+            logger.info(f"Discovered {new_count} companies from {source} via keyword search")
+
+        except Exception as e:
+            logger.error(f"Error discovering companies from {source}: {e}")
+
+    # --- Part 3: Ensure all job-listing companies exist in companies table ---
     for name in company_names:
-        existing = db.get_db().execute(
+        conn = db.get_db()
+        existing = conn.execute(
             "SELECT id FROM companies WHERE name = ?", (name,)
         ).fetchone()
+        conn.close()
         if not existing:
             db.upsert_company({"name": name})
             total_upserted += 1

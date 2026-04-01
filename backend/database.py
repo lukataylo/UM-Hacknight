@@ -114,7 +114,7 @@ def upsert_company(data: dict):
         for key, val in data.items():
             if key == "id":
                 continue
-            if val is not None and (existing[key] is None or key in ("score", "score_breakdown", "job_count_90d", "last_updated")):
+            if val is not None:
                 updates.append(f"{key} = ?")
                 values.append(val)
         if updates:
@@ -140,17 +140,27 @@ def upsert_company(data: dict):
         return company_id
 
 
-def bulk_insert_jobs(records: list):
+def bulk_insert_jobs(records: list) -> int:
+    """Insert job listings, skipping duplicates based on company+title+date+source."""
     if not records:
-        return
+        return 0
     conn = get_db()
-    conn.executemany(
-        """INSERT INTO job_listings (company_name, company_domain, title, location, job_type, date_posted, source, is_hybrid, is_office, raw_data)
-           VALUES (:company_name, :company_domain, :title, :location, :job_type, :date_posted, :source, :is_hybrid, :is_office, :raw_data)""",
-        records
-    )
+    inserted = 0
+    for r in records:
+        existing = conn.execute(
+            "SELECT 1 FROM job_listings WHERE company_name = ? AND title = ? AND date_posted = ? AND source = ? LIMIT 1",
+            (r["company_name"], r["title"], r["date_posted"], r["source"])
+        ).fetchone()
+        if not existing:
+            conn.execute(
+                """INSERT INTO job_listings (company_name, company_domain, title, location, job_type, date_posted, source, is_hybrid, is_office, raw_data)
+                   VALUES (:company_name, :company_domain, :title, :location, :job_type, :date_posted, :source, :is_hybrid, :is_office, :raw_data)""",
+                r
+            )
+            inserted += 1
     conn.commit()
     conn.close()
+    return inserted
 
 
 def get_companies(page=1, per_page=50, sort_by="score", sort_order="desc", min_score=0, industry=None, market=None, search=None, min_sqft=None, max_sqft=None):
