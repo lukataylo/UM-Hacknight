@@ -410,6 +410,81 @@
   .ticker-company { color: #fff; font-weight: 700; }
   .ticker-sep { color: rgba(255,255,255,0.1); font-size: 14px; }
   @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 1024px) {
+    /* Nav: unfix and stack rows */
+    nav { position: static; height: auto; flex-wrap: wrap; padding: 12px 16px; gap: 8px; }
+    .nav-left { gap: 12px; width: 100%; }
+    .nav-right { width: 100%; }
+    .search-input { width: 100%; }
+    .search-wrap { flex: 1; }
+
+    /* Ticker: make static so it doesn't overlap wrapped nav */
+    .ticker-wrap { position: static; }
+
+    /* Main: no fixed top offset needed since nav/ticker are now in flow */
+    main { padding-top: 24px !important; }
+    main.wide { max-width: 100%; padding-left: 16px; padding-right: 16px; overflow-x: hidden; }
+
+    /* Header: stack title and stats */
+    .header-top { flex-direction: column; align-items: flex-start; gap: 24px; }
+    .header-stats { gap: 24px; }
+    .header-stat { text-align: left; }
+    .header-title { font-size: 32px; }
+
+    /* Filters: wrap into rows */
+    .filter-bar { flex-wrap: wrap; gap: 8px; }
+    .filter-select { flex: 1 1 auto; min-width: 120px; }
+    .pipeline-btn { flex: 1 1 100%; justify-content: center; }
+    .export-btn { margin-left: 0; flex: 1 1 auto; justify-content: center; }
+
+    /* Expanded row: single column */
+    .expanded-content { grid-template-columns: 1fr; gap: 24px; }
+    .expanded-cols { grid-template-columns: 1fr; }
+
+    /* Table: allow horizontal scroll, fill viewport */
+    .table-container { border-radius: 8px; width: 100%; overflow: hidden; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    table { min-width: 1200px; }
+  }
+
+  @media (max-width: 700px) {
+    nav { padding: 10px 12px; gap: 6px; }
+    .logo-text { font-size: 16px; }
+    .tab-switcher { width: 100%; }
+    .tab-btn { padding: 6px 10px; font-size: 9px; flex: 1; justify-content: center; }
+
+    main { padding: 12px 10px !important; }
+    main.wide { padding: 12px 6px !important; }
+
+    .header { margin-bottom: 24px; }
+    .header-title { font-size: 22px; }
+    .header-stats { flex-wrap: wrap; gap: 12px; }
+    .header-stat-value { font-size: 20px; }
+
+    .filter-bar { padding: 10px 0; }
+    .filter-label { display: none; }
+    .filter-select { min-width: 0; flex: 1 1 45%; font-size: 11px; padding: 6px 8px; }
+    .pipeline-btn { font-size: 10px; padding: 6px 10px; }
+    .export-btn { font-size: 10px; padding: 6px 10px; }
+
+    table { min-width: 800px; }
+    th { padding: 8px 6px; font-size: 9px; }
+    td { padding: 8px 6px; font-size: 12px; }
+
+    .card-summary { font-size: 13px; }
+
+    .auth-input { width: 220px; font-size: 14px; padding: 10px 16px; }
+    .auth-form { flex-direction: column; align-items: center; }
+    .auth-submit { width: 220px; }
+    .auth-logo-text { font-size: 20px; }
+    .auth-logo-icon { width: 36px; height: 36px; }
+    .auth-logo-icon svg { width: 20px; height: 20px; }
+
+    footer { padding: 20px 12px; }
+    .footer-stats { flex-direction: column; gap: 12px; }
+  }
 </style>
 </head>
 <body>
