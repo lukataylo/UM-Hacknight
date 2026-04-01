@@ -1243,17 +1243,21 @@ function exportCSV() {
 
 // === TICKER ===
 function loadTicker() {
-  const top = allData.filter(c => c.score >= 40).slice(0, 30);
+  const top = [...allData].sort((a,b) => (b.score||0) - (a.score||0)).slice(0, 40);
   const items = [];
   top.forEach(c => {
     const evidence = c.evidence || [];
-    if (!evidence.length) return;
-    const ev = evidence[evidence.length - 1];
-    const dotClass = c.score >= 80 ? 'green' : c.score >= 60 ? 'amber' : c.score >= 40 ? 'blue' : 'red';
-    items.push(`<span class="ticker-item"><span class="ticker-dot ${dotClass}"></span><span class="ticker-company">${esc(c.name)}</span>${esc(ev.description)}</span><span class="ticker-sep">|</span>`);
+    const ev = evidence.length ? evidence[evidence.length - 1] : null;
+    const blurb = ev ? ev.description
+      : c.latest_funding_round ? `${c.latest_funding_round} — ${formatMoney(c.latest_funding_amount)} raised`
+      : c.industry ? `${c.industry} · ${c.employee_count ? c.employee_count.toLocaleString() + ' employees' : 'Growing'}`
+      : '';
+    if (!blurb) return;
+    const dotClass = c.score >= 80 ? 'green' : c.score >= 60 ? 'amber' : c.score >= 30 ? 'blue' : 'red';
+    items.push(`<span class="ticker-item"><span class="ticker-dot ${dotClass}"></span><span class="ticker-company">${esc(c.name)}</span>${esc(blurb)}</span><span class="ticker-sep">|</span>`);
   });
-  const html = items.join('') + items.join('');
-  document.getElementById('tickerContent').innerHTML = html;
+  if (!items.length) return;
+  document.getElementById('tickerContent').innerHTML = items.join('') + items.join('');
 }
 </script>
 </body>
