@@ -444,6 +444,44 @@
   th[data-sort]:hover { color: #10b981; }
   .sort-arrow { margin-left: 4px; font-size: 10px; }
 
+  /* Pull modal */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #1a1d27; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; padding: 32px; width: 500px; max-width: 90vw;
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .modal p { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 16px; }
+  .modal textarea {
+    width: 100%; height: 120px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    padding: 12px; color: #fff; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; resize: vertical; outline: none;
+  }
+  .modal textarea:focus { border-color: rgba(16,185,129,0.5); }
+  .modal textarea::placeholder { color: rgba(255,255,255,0.2); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+  .modal-cancel {
+    padding: 8px 20px; background: rgba(255,255,255,0.05); border: none;
+    border-radius: 8px; color: rgba(255,255,255,0.6); cursor: pointer;
+    font-size: 12px; font-weight: 700; font-family: inherit;
+  }
+  .modal-submit {
+    padding: 8px 20px; background: #10b981; border: none; border-radius: 8px;
+    color: #000; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit;
+  }
+  .modal-submit:hover { background: #34d399; }
+  .modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal-status { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 12px; min-height: 16px; }
+  .modal-status.error { color: #f43f5e; }
+  .modal-status.success { color: #10b981; }
+
   /* Bloomberg-style news ticker */
   .ticker-wrap {
     position: fixed; top: 64px; left: 0; right: 0; z-index: 45;
@@ -675,8 +713,11 @@
         <option value="15000-30000">15,000 - 30,000 SF</option>
         <option value="30000-999999">30,000+ SF</option>
       </select>
-      <div class="pipeline-btn" id="lastUpdatedBtn">
+      <button class="pipeline-btn" style="cursor:pointer" onclick="openPullModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Pull Companies
+      </button>
+      <div class="pipeline-btn" style="border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)">
         <span id="lastUpdatedText">Loading...</span>
       </div>
       <button class="export-btn" onclick="exportCSV()">
@@ -708,6 +749,22 @@
     </div>
   </div>
 </footer>
+
+<!-- PULL MODAL -->
+<div class="modal-overlay" id="pullModal">
+  <div class="modal">
+    <h2>Pull New Companies</h2>
+    <p>Enter LinkedIn company slugs or URLs, one per line. These will be pulled live from Bright Data's LinkedIn API.</p>
+    <textarea id="pullInput" placeholder="monzo-bank
+revolut
+https://www.linkedin.com/company/stripe"></textarea>
+    <div class="modal-status" id="pullStatus"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closePullModal()">Cancel</button>
+      <button class="modal-submit" id="pullSubmit" onclick="submitPull()">Pull Companies</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // === PASSWORD GATE ===
@@ -1239,6 +1296,66 @@ function exportCSV() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// === TICKER ===
+// === PULL MODAL ===
+function openPullModal() {
+  document.getElementById('pullModal').classList.add('show');
+  document.getElementById('pullInput').value = '';
+  document.getElementById('pullStatus').textContent = '';
+  document.getElementById('pullStatus').className = 'modal-status';
+  document.getElementById('pullSubmit').disabled = false;
+}
+
+function closePullModal() {
+  document.getElementById('pullModal').classList.remove('show');
+}
+
+async function submitPull() {
+  const input = document.getElementById('pullInput').value.trim();
+  if (!input) return;
+
+  const slugs = input.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!slugs.length) return;
+
+  const status = document.getElementById('pullStatus');
+  const btn = document.getElementById('pullSubmit');
+  btn.disabled = true;
+  status.className = 'modal-status';
+  status.textContent = `Triggering GitHub Action for ${slugs.length} companies...`;
+
+  try {
+    // Trigger GitHub Actions workflow_dispatch
+    const resp = await fetch(
+      'https://api.github.com/repos/lukataylo/UM-Hacknight/actions/workflows/pull-companies.yml/dispatches',
+      {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `Bearer ${prompt('Enter your GitHub Personal Access Token:')}`,
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: { companies: slugs.join(',') },
+        }),
+      }
+    );
+
+    if (resp.status === 204) {
+      status.className = 'modal-status success';
+      status.textContent = `Triggered! ${slugs.length} companies queued. The page will update in ~2 minutes when the Action completes.`;
+    } else {
+      const err = await resp.text();
+      status.className = 'modal-status error';
+      status.textContent = `Error: ${resp.status} — ${err.slice(0, 100)}`;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    status.className = 'modal-status error';
+    status.textContent = `Use the local CLI instead: python manage.py pull ${slugs.join(' ')}`;
+    btn.disabled = false;
+  }
 }
 
 // === TICKER ===
