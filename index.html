@@ -384,6 +384,46 @@
 
   .hidden { display: none !important; }
 
+  /* Star button */
+  .star-btn {
+    background: none; border: none; cursor: pointer; padding: 2px;
+    color: rgba(255,255,255,0.15); transition: color 0.15s; flex-shrink: 0;
+  }
+  .star-btn:hover { color: #f59e0b; }
+  .star-btn.starred { color: #f59e0b; }
+  .star-btn svg { width: 16px; height: 16px; display: block; }
+
+  /* Score tooltip */
+  .score-wrap { position: relative; }
+  .score-tip {
+    display: none; position: absolute; z-index: 20;
+    top: calc(100% + 8px); right: 0; min-width: 200px;
+    background: #1e2028; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+  .score-wrap:hover .score-tip { display: block; }
+  .score-tip-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 11px;
+  }
+  .score-tip-label { color: rgba(255,255,255,0.5); text-transform: capitalize; }
+  .score-tip-bar { width: 60px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; margin: 0 8px; flex-shrink: 0; }
+  .score-tip-fill { height: 100%; border-radius: 2px; background: #10b981; }
+  .score-tip-val { color: #fff; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 10px; min-width: 28px; text-align: right; }
+
+  /* NEW badge */
+  .badge-new {
+    background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3);
+    animation: pulse-new 2s ease-in-out infinite;
+  }
+  @keyframes pulse-new { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+  /* Sortable headers */
+  th[data-sort] { cursor: pointer; user-select: none; transition: color 0.15s; }
+  th[data-sort]:hover { color: #10b981; }
+  .sort-arrow { margin-left: 4px; font-size: 10px; }
+
   /* Bloomberg-style news ticker */
   .ticker-wrap {
     position: fixed; top: 64px; left: 0; right: 0; z-index: 45;
@@ -597,6 +637,8 @@
       </select>
       <select class="filter-select" id="signalFilter" onchange="applyFilters()">
         <option value="">All Signals</option>
+        <option value="_starred">Starred Only</option>
+        <option value="_new">New Prospects</option>
         <option value="Hiring">Hiring Surge</option>
         <option value="Funded">Recently Funded</option>
         <option value="Office">New Office</option>
@@ -677,7 +719,12 @@ let expandedRow = null;
 let searchTimeout = null;
 let totalPages = 1;
 let totalCompanies = 0;
+let sortBy = 'score';
+let sortDir = 'desc';
+let starred = new Set(JSON.parse(localStorage.getItem('sfl_starred') || '[]'));
+let lastUpdated = null;
 const PER_PAGE = 50;
+const _escDiv = document.createElement('div');
 
 // SVG icon helpers
 const icons = {
@@ -688,6 +735,8 @@ const icons = {
   external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:48px;height:48px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  starFilled: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
 };
 
 // === INIT ===
@@ -699,13 +748,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initApp() {
-  // Set date
   const d = new Date();
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('currentDate').textContent = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 
-  // Load data
   try {
     const [companiesRes, metaRes] = await Promise.all([
       fetch('data/companies.json'),
@@ -713,21 +760,12 @@ async function initApp() {
     ]);
     allData = await companiesRes.json();
     const meta = await metaRes.json();
+    lastUpdated = new Date(meta.last_updated);
 
-    // Show last updated
-    const updatedDate = new Date(meta.last_updated);
-    document.getElementById('lastUpdatedText').textContent = `Updated ${updatedDate.toLocaleDateString()}`;
-
-    // Populate filters
+    document.getElementById('lastUpdatedText').textContent = `Updated ${lastUpdated.toLocaleDateString()}`;
     populateFilters();
-
-    // Compute and show stats
     loadStats();
-
-    // Show companies
     applyFilters();
-
-    // Load ticker
     loadTicker();
   } catch(e) {
     document.getElementById('content').innerHTML = `<div class="loading">Error loading data: ${e.message}</div>`;
@@ -735,26 +773,21 @@ async function initApp() {
 }
 
 function populateFilters() {
-  const cities = {};
-  const industries = {};
+  const cities = {}, industries = {};
   allData.forEach(c => {
     if (c.hq_city) cities[c.hq_city] = (cities[c.hq_city] || 0) + 1;
     if (c.industry) industries[c.industry] = (industries[c.industry] || 0) + 1;
   });
-
-  const citySelect = document.getElementById('cityFilter');
-  Object.entries(cities).sort((a,b) => b[1] - a[1]).forEach(([city]) => {
-    const o = document.createElement('option');
-    o.value = city; o.textContent = city;
-    citySelect.appendChild(o);
-  });
-
-  const indSelect = document.getElementById('industryFilter');
-  Object.entries(industries).sort((a,b) => b[1] - a[1]).forEach(([ind]) => {
-    const o = document.createElement('option');
-    o.value = ind; o.textContent = ind;
-    indSelect.appendChild(o);
-  });
+  const addOpts = (id, map) => {
+    const el = document.getElementById(id);
+    Object.entries(map).sort((a,b) => b[1] - a[1]).forEach(([v]) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      el.appendChild(o);
+    });
+  };
+  addOpts('cityFilter', cities);
+  addOpts('industryFilter', industries);
 }
 
 function loadStats() {
@@ -764,47 +797,89 @@ function loadStats() {
   document.getElementById('statHigh').textContent = allData.filter(c => c.score >= 70).length;
 }
 
+// === STARRING ===
+function toggleStar(id, e) {
+  e.stopPropagation();
+  starred.has(id) ? starred.delete(id) : starred.add(id);
+  localStorage.setItem('sfl_starred', JSON.stringify([...starred]));
+  renderView();
+}
+
+function starBtn(id) {
+  const on = starred.has(id);
+  return `<button class="star-btn ${on ? 'starred' : ''}" onclick="toggleStar(${id},event)" title="${on ? 'Unstar' : 'Star'}">${on ? icons.starFilled : icons.star}</button>`;
+}
+
+// === NEW BADGE ===
+function isNew(c) {
+  if (!lastUpdated || !c.last_updated) return false;
+  const updated = new Date(c.last_updated);
+  return (lastUpdated - updated) < 7 * 86400000; // within 7 days of last refresh
+}
+
+// === SCORE TOOLTIP ===
+const SIGNAL_LABELS = {
+  hiring_velocity: 'Hiring', funding_recency: 'Funding', headcount_growth: 'Growth',
+  industry_fit: 'Industry', location_match: 'Location', company_stage: 'Stage',
+  glassdoor_sentiment: 'Glassdoor'
+};
+
+function scoreTooltip(c) {
+  const bd = c.score_breakdown || {};
+  if (!Object.keys(bd).length) return '';
+  return `<div class="score-tip">${Object.entries(SIGNAL_LABELS).map(([k, label]) => {
+    const v = bd[k] ?? 0;
+    return `<div class="score-tip-row"><span class="score-tip-label">${label}</span><div class="score-tip-bar"><div class="score-tip-fill" style="width:${v*100}%"></div></div><span class="score-tip-val">${(v*100).toFixed(0)}%</span></div>`;
+  }).join('')}</div>`;
+}
+
 // === FILTERING / SORTING / PAGINATION ===
 function getFilteredData() {
-  let result = [...allData];
+  let result = allData;
   const search = (document.getElementById('searchInput').value || '').toLowerCase();
   const city = document.getElementById('cityFilter').value;
   const signal = document.getElementById('signalFilter').value;
   const industry = document.getElementById('industryFilter').value;
   const sqft = document.getElementById('sqftFilter').value;
 
-  if (search) {
-    result = result.filter(c =>
-      (c.name || '').toLowerCase().includes(search) ||
-      (c.domain || '').toLowerCase().includes(search) ||
-      (c.description || '').toLowerCase().includes(search)
-    );
-  }
-  if (city) {
-    result = result.filter(c =>
-      (c.hq_city || '').toLowerCase().includes(city.toLowerCase()) ||
-      (c.hq_state || '').toLowerCase().includes(city.toLowerCase())
-    );
-  }
-  if (industry) {
-    result = result.filter(c => (c.industry || '').toLowerCase().includes(industry.toLowerCase()));
-  }
-  if (signal) {
-    result = result.filter(c =>
-      c.signal_tags && c.signal_tags.some(t => t.includes(signal))
-    );
-  }
+  if (search) result = result.filter(c =>
+    (c.name || '').toLowerCase().includes(search) ||
+    (c.domain || '').toLowerCase().includes(search) ||
+    (c.description || '').toLowerCase().includes(search)
+  );
+  if (city) result = result.filter(c =>
+    (c.hq_city || '').toLowerCase().includes(city.toLowerCase()) ||
+    (c.hq_state || '').toLowerCase().includes(city.toLowerCase())
+  );
+  if (industry) result = result.filter(c => (c.industry || '').toLowerCase().includes(industry.toLowerCase()));
+  if (signal === '_starred') result = result.filter(c => starred.has(c.id));
+  else if (signal === '_new') result = result.filter(isNew);
+  else if (signal) result = result.filter(c => c.signal_tags && c.signal_tags.some(t => t.includes(signal)));
   if (sqft) {
     const [min, max] = sqft.split('-').map(Number);
-    result = result.filter(c => {
-      const sf = c.estimated_sqft || 0;
-      return sf >= min && sf <= max;
-    });
+    result = result.filter(c => (c.estimated_sqft || 0) >= min && (c.estimated_sqft || 0) <= max);
   }
 
-  // Sort by score descending
-  result.sort((a, b) => (b.score || 0) - (a.score || 0));
+  // Sort
+  const dir = sortDir === 'asc' ? 1 : -1;
+  result = [...result].sort((a, b) => {
+    let va = a[sortBy] ?? '', vb = b[sortBy] ?? '';
+    if (typeof va === 'string') return va.localeCompare(vb) * dir;
+    return ((va || 0) - (vb || 0)) * dir;
+  });
   return result;
+}
+
+function setSort(field) {
+  if (sortBy === field) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+  else { sortBy = field; sortDir = 'desc'; }
+  currentPage = 1;
+  applyFilters();
+}
+
+function sortArrow(field) {
+  if (sortBy !== field) return '';
+  return `<span class="sort-arrow">${sortDir === 'asc' ? '\u25b2' : '\u25bc'}</span>`;
 }
 
 function applyFilters() {
@@ -839,9 +914,8 @@ function renderView() {
 // === HELPERS ===
 function esc(s) {
   if (!s) return '';
-  const d = document.createElement('div');
-  d.textContent = String(s);
-  return d.innerHTML;
+  _escDiv.textContent = String(s);
+  return _escDiv.innerHTML;
 }
 
 function scoreClass(s) { return s >= 80 ? 'score-high' : s >= 60 ? 'score-med' : 'score-low'; }
@@ -871,11 +945,9 @@ function renderTrendBars(trend) {
     const cls = i === trend.length - 1 ? 'trend-bar latest' : 'trend-bar';
     return `<div class="${cls}" style="height:${h}%" title="${t.month}: ${t.count}"></div>`;
   }).join('');
-  const first = trend[0]?.month || '';
-  const last = trend[trend.length-1]?.month || '';
   return `
     <div class="trend-bars">${bars}</div>
-    <div class="trend-labels"><span>${esc(first)}</span><span>Hiring Trend</span><span>${esc(last)}</span></div>
+    <div class="trend-labels"><span>${esc(trend[0]?.month)}</span><span>Hiring Trend</span><span>${esc(trend[trend.length-1]?.month)}</span></div>
   `;
 }
 
@@ -884,9 +956,7 @@ function toggleCard(id) {
   const el = document.getElementById(`card-expand-${id}`);
   if (el) el.classList.toggle('open', expandedCards[id]);
   const btn = document.getElementById(`card-btn-${id}`);
-  if (btn) btn.innerHTML = expandedCards[id]
-    ? `Less ${icons.chevUp}`
-    : `Why now? ${icons.chevDown}`;
+  if (btn) btn.innerHTML = expandedCards[id] ? `Less ${icons.chevUp}` : `Why now? ${icons.chevDown}`;
 }
 
 // === CARD VIEW ===
@@ -897,14 +967,15 @@ function renderCards() {
     return;
   }
   content.innerHTML = `<div class="cards-grid">${allCompanies.map(c => {
-    const tags = (c.signal_tags || []);
-    const trend = c.hiring_trend || [];
+    const tags = c.signal_tags || [];
     const evidence = c.evidence || [];
+    const newBadge = isNew(c) ? '<span class="badge badge-new">NEW</span>' : '';
     return `
     <div class="card">
       <div class="card-body">
         <div class="card-top">
           <div class="card-company">
+            ${starBtn(c.id)}
             <div class="card-favicon">
               <img src="https://www.google.com/s2/favicons?domain=${esc(c.domain)}&sz=64" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">
             </div>
@@ -913,30 +984,22 @@ function renderCards() {
               <div class="card-location">${icons.mapPin} ${esc(c.hq_city)}${c.hq_state ? ', ' + esc(c.hq_state) : ''}${c.submarket ? ' &middot; ' + esc(c.submarket) : ''}</div>
             </div>
           </div>
-          <div class="score-badge ${scoreClass(c.score)}">${Math.round(c.score)}</div>
+          <div class="score-wrap">
+            <div class="score-badge ${scoreClass(c.score)}">${Math.round(c.score)}</div>
+            ${scoreTooltip(c)}
+          </div>
         </div>
-        <div class="badges">${tags.map(t => `<span class="badge ${badgeVariant(t)}">${esc(t)}</span>`).join('')}</div>
+        <div class="badges">${newBadge}${tags.map(t => `<span class="badge ${badgeVariant(t)}">${esc(t)}</span>`).join('')}</div>
         <div class="card-summary">"${esc(c.ai_summary || c.description || '')}"</div>
         <div class="card-bottom">
-          <div class="trend-chart">${renderTrendBars(trend)}</div>
+          <div class="trend-chart">${renderTrendBars(c.hiring_trend)}</div>
           <button class="why-btn" id="card-btn-${c.id}" onclick="toggleCard(${c.id})">Why now? ${icons.chevDown}</button>
         </div>
       </div>
       <div class="card-expanded ${expandedCards[c.id] ? 'open' : ''}" id="card-expand-${c.id}">
         <div class="micro-label">Evidence & Signals</div>
         <div class="evidence-list">
-          ${evidence.map(ev => `
-            <div class="evidence-item">
-              <div class="evidence-line"></div>
-              <div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span class="evidence-date">${esc(ev.date)}</span>
-                  <span class="evidence-event">${esc(ev.event)}</span>
-                </div>
-                <div class="evidence-desc">${esc(ev.description)}</div>
-              </div>
-            </div>
-          `).join('')}
+          ${evidence.map(ev => `<div class="evidence-item"><div class="evidence-line"></div><div><div style="display:flex;align-items:center;gap:8px"><span class="evidence-date">${esc(ev.date)}</span><span class="evidence-event">${esc(ev.event)}</span></div><div class="evidence-desc">${esc(ev.description)}</div></div></div>`).join('')}
         </div>
         <button class="view-profile-btn" onclick="window.open('${esc(c.website||'')}','_blank')">View Full Profile ${icons.external}</button>
       </div>
@@ -948,18 +1011,12 @@ function renderCards() {
 function renderMiniTrend(trend) {
   if (!trend || !trend.length) return '<span style="color:rgba(255,255,255,0.2)">-</span>';
   const max = Math.max(...trend.map(t => t.count), 1);
-  const first = trend[0].count;
-  const last = trend[trend.length - 1].count;
-  const pctChange = first > 0 ? Math.round(((last - first) / first) * 100) : 0;
-  const isUp = pctChange > 0;
-  const color = isUp ? '#10b981' : pctChange < 0 ? '#f43f5e' : 'rgba(255,255,255,0.4)';
-  const arrow = isUp ? '\u2191' : pctChange < 0 ? '\u2193' : '\u2192';
-  const bars = trend.map((t, i) => {
-    const h = Math.max((t.count / max) * 20, 2);
-    const bg = i === trend.length - 1 ? '#10b981' : '#334155';
-    return `<div style="width:4px;height:${h}px;background:${bg};border-radius:1px"></div>`;
-  }).join('');
-  return `<div style="display:flex;align-items:flex-end;gap:1px;height:20px">${bars}</div><div style="font-size:10px;color:${color};font-weight:700;margin-top:2px">${arrow}${Math.abs(pctChange)}%</div>`;
+  const first = trend[0].count, last = trend[trend.length - 1].count;
+  const pct = first > 0 ? Math.round(((last - first) / first) * 100) : 0;
+  const color = pct > 0 ? '#10b981' : pct < 0 ? '#f43f5e' : 'rgba(255,255,255,0.4)';
+  const arrow = pct > 0 ? '\u2191' : pct < 0 ? '\u2193' : '\u2192';
+  const bars = trend.map((t, i) => `<div style="width:4px;height:${Math.max((t.count/max)*20,2)}px;background:${i===trend.length-1?'#10b981':'#334155'};border-radius:1px"></div>`).join('');
+  return `<div style="display:flex;align-items:flex-end;gap:1px;height:20px">${bars}</div><div style="font-size:10px;color:${color};font-weight:700;margin-top:2px">${arrow}${Math.abs(pct)}%</div>`;
 }
 
 function toggleRow(id) {
@@ -973,29 +1030,35 @@ function renderTable() {
     content.innerHTML = `<div class="empty-state">${icons.search}<h3>No prospects match your filters</h3><a onclick="clearFilters()">Clear all filters</a></div>`;
     return;
   }
+  const th = (label, field) => field
+    ? `<th data-sort="${field}" onclick="setSort('${field}')">${label}${sortArrow(field)}</th>`
+    : `<th>${label}</th>`;
   content.innerHTML = `<div class="table-container"><div class="table-scroll"><table>
     <thead><tr>
-      <th>Company</th><th>Score</th><th>Location</th><th>Industry</th>
-      <th>Employees</th><th>Hiring</th><th>Trend</th><th>Hybrid %</th><th>Est. SF</th>
-      <th>Funding</th><th>Revenue</th><th>Founded</th><th>Glassdoor</th>
-      <th>Contact</th><th>Email</th><th>Phone</th><th>Links</th>
+      <th></th>${th('Company','name')}${th('Score','score')}${th('Location','hq_city')}${th('Industry','industry')}
+      ${th('Employees','employee_count')}${th('Hiring','job_count_90d')}
+      <th>Trend</th><th>Hybrid %</th>${th('Est. SF','estimated_sqft')}
+      ${th('Funding','funding_total_usd')}<th>Revenue</th>${th('Founded','founded_year')}
+      <th>Glassdoor</th><th>Contact</th><th>Email</th><th>Phone</th><th>Links</th>
     </tr></thead>
     <tbody>${allCompanies.map(c => {
       const tags = c.signal_tags || [];
       const evidence = c.evidence || [];
       const isExpanded = expandedRow === c.id;
+      const newBadge = isNew(c) ? ' <span class="badge badge-new" style="font-size:8px;padding:1px 5px">NEW</span>' : '';
       return `
       <tr class="row-data ${isExpanded ? 'row-expanded' : ''}" onclick="toggleRow(${c.id})">
+        <td style="width:32px;padding-right:0">${starBtn(c.id)}</td>
         <td>
           <div class="td-company">
             <img src="https://www.google.com/s2/favicons?domain=${esc(c.domain)}&sz=32" alt="" class="td-favicon" referrerpolicy="no-referrer" onerror="this.style.display='none'">
             <div>
-              <div class="td-company-name">${esc(c.name)}</div>
+              <div class="td-company-name">${esc(c.name)}${newBadge}</div>
               <div class="td-domain">${esc(c.domain)}</div>
             </div>
           </div>
         </td>
-        <td><span class="td-score" style="color:${scoreColor(c.score)}">${Math.round(c.score)}</span></td>
+        <td><div class="score-wrap" style="display:inline-block"><span class="td-score" style="color:${scoreColor(c.score)}">${Math.round(c.score)}</span>${scoreTooltip(c)}</div></td>
         <td>
           <div class="td-location-city">${esc(c.hq_city)}${c.hq_state ? ', ' + esc(c.hq_state) : ''}</div>
           <div class="td-location-sub">${esc(c.submarket || '')}</div>
@@ -1034,7 +1097,7 @@ function renderTable() {
           ${c.linkedin_url ? `<a href="${esc(c.linkedin_url)}" target="_blank" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.4);text-decoration:none;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-right:8px" title="LinkedIn">LI</a>` : ''}${c.website ? `<a href="${esc(c.website)}" target="_blank" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.4);text-decoration:none;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em" title="Website">WEB</a>` : ''}
         </td>
       </tr>
-      ${isExpanded ? `<tr><td colspan="17" style="padding:0;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.4)">
+      ${isExpanded ? `<tr><td colspan="18" style="padding:0;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.4)">
         <div class="expanded-content">
           <div>
             <div class="micro-label">AI Intelligence Report</div>
