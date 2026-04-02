@@ -47,6 +47,8 @@ If you don't know a value, use null. All monetary values in USD."""
 
 QUERY_TEMPLATE = """Research the company "{name}" (website: {domain}) headquartered in London, UK.
 
+I need to find the person responsible for office/workplace decisions — NOT the CEO. Search for their Head of Workplace, VP of Real Estate, Facilities Director, Head of Operations, Office Manager, Workplace Experience lead, or COO. Check LinkedIn and company pages for these roles.
+
 Return this exact JSON structure:
 {{
   "summary": "One paragraph (2-3 sentences) intelligence summary covering what the company does, its market position, and current trajectory. Write for a commercial real estate sales team looking to lease office space.",
@@ -57,10 +59,12 @@ Return this exact JSON structure:
   "latest_funding_amount_usd": null or number,
   "latest_funding_date": null or string "YYYY-MM-DD",
   "total_funding_usd": null or number,
-  "ceo_name": null or string,
-  "ceo_email_guess": null or string (first.last@{domain} format),
-  "cro_or_head_of_re": null or string (name of CRO, Head of Real Estate, VP Workplace, or similar),
-  "cro_email_guess": null or string,
+  "facilities_contact_name": null or string (name of person responsible for office/workplace — e.g. Head of Workplace, VP Real Estate, Facilities Director, Head of Operations, Office Manager. NOT the CEO.),
+  "facilities_contact_title": null or string (their exact job title),
+  "facilities_contact_email_guess": null or string (first.last@{domain} format),
+  "fallback_contact_name": null or string (COO or VP Operations if no facilities person found — still NOT the CEO),
+  "fallback_contact_title": null or string,
+  "fallback_contact_email_guess": null or string,
   "glassdoor_rating": null or number (1.0-5.0),
   "estimated_headcount": null or number,
   "office_locations": null or string (London office address or area if known),
@@ -136,13 +140,13 @@ def apply_enrichment(company_row: dict, perplexity_data: dict) -> dict:
     if p.get("estimated_sqft") and isinstance(p["estimated_sqft"], (int, float)):
         update["estimated_sqft"] = int(p["estimated_sqft"])
 
-    # Contacts — prefer CRO/Head of Real Estate, fall back to CEO
-    contact_name = p.get("cro_or_head_of_re") or p.get("ceo_name")
-    contact_email = p.get("cro_email_guess") or p.get("ceo_email_guess")
+    # Contacts — prefer facilities/workplace person, fall back to COO/VP Ops
+    contact_name = p.get("facilities_contact_name") or p.get("fallback_contact_name")
+    contact_title = p.get("facilities_contact_title") or p.get("fallback_contact_title")
+    contact_email = p.get("facilities_contact_email_guess") or p.get("fallback_contact_email_guess")
     if contact_name:
         update["contact_name"] = contact_name
-        title = "Head of Workplace" if p.get("cro_or_head_of_re") else "CEO"
-        update["contact_title"] = title
+        update["contact_title"] = contact_title or "Workplace / Operations"
     if contact_email:
         update["contact_email"] = contact_email
 
